@@ -5,6 +5,7 @@ import { Plus, Database, Activity, Server, Clock, HardDrive, Users } from "lucid
 import { useAuth } from "../../context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { CreateProjectDialog } from "./CreateProjectDialog";
 
 export default function ProjectsPage() {
   const navigate = useNavigate();
@@ -18,20 +19,13 @@ export default function ProjectsPage() {
 
   const projects = data?.data || [];
 
-  const handleNewProject = () => {
-    alert("New Project creation flow to be implemented soon!");
-  };
-
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
         <div className="flex items-center space-x-2">
           {userRole === "admin" && (
-            <Button onClick={handleNewProject} className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-md">
-              <Plus className="mr-2 h-4 w-4" />
-              New Project
-            </Button>
+            <CreateProjectDialog />
           )}
         </div>
       </div>
@@ -104,10 +98,7 @@ export default function ProjectsPage() {
               Get started by creating a new Periscope project and connecting it to your database.
             </CardDescription>
             {userRole === "admin" && (
-              <Button onClick={handleNewProject} variant="outline">
-                <Plus className="mr-2 h-4 w-4" />
-                Create your first project
-              </Button>
+              <CreateProjectDialog />
             )}
           </Card>
         ) : (

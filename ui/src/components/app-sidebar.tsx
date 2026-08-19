@@ -102,11 +102,11 @@ export function AppSidebar() {
             <div className="flex items-center gap-3 w-full cursor-pointer hover:bg-sidebar-accent hover:text-sidebar-accent-foreground p-2 rounded-md transition-colors">
               <Avatar className="h-8 w-8 rounded-lg border border-border">
                 <AvatarFallback className="rounded-lg bg-primary/10 text-primary text-xs font-medium">
-                  {user?.name?.substring(0, 2).toUpperCase() || 'AD'}
+                  {user?.username?.substring(0, 2).toUpperCase() || 'AD'}
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-col flex-1 text-left text-sm leading-tight overflow-hidden">
-                <span className="truncate font-medium text-sidebar-foreground">{user?.name || 'Administrator'}</span>
+                <span className="truncate font-medium text-sidebar-foreground">{user?.username || 'Administrator'}</span>
                 <span className="truncate text-xs text-sidebar-foreground/50">{user?.email || 'admin@example.com'}</span>
               </div>
             </div>

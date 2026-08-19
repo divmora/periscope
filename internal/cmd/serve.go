@@ -66,10 +66,10 @@ var serveCmd = &cobra.Command{
 				r.Use(auth.RequireAuth)
 
 				r.Route("/projects", func(r chi.Router) {
-					// r.Get("/", handlers.GetProjects)
+					r.Get("/", handlers.GetProjects)
 
 					// Only global admins can create projects
-					// r.With(auth.RequireGlobalAdmin).Post("/", handlers.CreateProject)
+					r.With(auth.RequireGlobalAdmin).Post("/", handlers.CreateProject)
 
 					r.Route("/{projectId}", func(r chi.Router) {
 						// Ensure user is global admin or explicitly added to this project
