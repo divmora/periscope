@@ -1,0 +1,18 @@
+# Development Dockerfile for Go
+FROM golang:1.26-alpine
+
+WORKDIR /app
+
+# Install Air for live reloading
+RUN go install github.com/air-verse/air@latest
+
+# Copy go mod and sum files
+COPY go.mod go.sum ./
+
+# Download all dependencies
+RUN go mod download
+
+# We don't copy the source code here because it will be mounted via volume in docker-compose
+
+# Command to run air
+CMD ["air", "-c", ".air.toml"]

@@ -1,0 +1,34 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Env file (crucial for security)
+.env
+
+# Build Output / Air tmp directory
+tmp/
+bin/
+
+# OS specific
+.DS_Store
+.idea/
+.vscode/
+
+# Frontend (if using node inside ui directory)
+ui/node_modules/
+ui/dist/
+ui/.env.local
+ui/.env.*.local
