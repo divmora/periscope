@@ -89,24 +89,19 @@ periscope/
 - [x] Implement Project Memberships Management and Role delegation.
 
 ### Phase 3: Data Extraction & Storage Layer (The Collector Engine)
-- [ ] Implement Pluggable Storage Drivers (`internal/storage`):
-  - Local Disk, S3, R2, MinIO.
-- [ ] Build the `collector` package (`/internal/collector`):
-  - Read active projects from PostgreSQL `projects` table.
-  - Spawn independent goroutine workers per project with dedicated connection pools for each source Laravel database (MySQL & PostgreSQL support).
-  - Use `telescope_watermarks` table per project to incrementally poll entries (`sequence > last_sequence`).
-  - Aggregate `telescope_entries_tags` and extract indexed dimensions for structured querying:
-    - `user_id` & `user_email`
-    - `status_code`, `duration_ms`, `uri` (for HTTP requests)
-    - `duration_ms`, SQL query snippet (for queries)
-    - `exception_class`, `message` (for exceptions)
-  - Write compressed Parquet chunks to the project's designated storage driver with Hive partitioning (e.g., `projectId=...`) to support optimal querying. Schema evolution will be handled internally via Parquet metadata rather than path-based partitioning.
-  - Ingest queryable index metadata directly into the central PostgreSQL instance using `pgx.CopyFrom` (binary protocol) for maximum throughput.
-  - Safely purge processed rows from the source Laravel database if `prune_enabled` is set to true.
-- [ ] Implement the `sync` CLI Command:
-  - Add the `sync` subcommand to the single `periscope` CLI binary (`periscope sync`).
-  - Accepts inputs (like Project ID) to fetch config data and execute the collector pipeline independently.
-  - Provide instructions/snippets in the UI (Project Settings) for users to set this up via CRON or run it manually.
+- [x] Implement Pluggable Storage Drivers (`internal/storage`):
+  - [x] Local Disk, AWS S3, Cloudflare R2, MinIO.
+- [x] Build the `collector` package (`/internal/collector`):
+  - [x] Multi-dialect source database support for Laravel Telescope (MySQL & PostgreSQL).
+  - [x] Incremental sequence polling using `telescope_watermarks` (`sequence > last_sequence`).
+  - [x] Aggregate `telescope_entries_tags` and extract indexed dimensions for structured querying (requests, queries, exceptions, logs, jobs, commands, models, etc.).
+  - [x] Write ZSTD-compressed Parquet chunks with Hive partitioning (`projectId={id}/type={type}/year={YYYY}/month={MM}/day={DD}/hour={HH}/`).
+  - [x] Hybrid flush triggers (10,000 rows / 1 hour / 100MB).
+  - [x] Checkpoint watermarks in PostgreSQL and safely purge processed rows from source Laravel database if `prune_enabled` is true.
+- [x] Implement the `sync` CLI Command:
+  - [x] Add the `sync` (and `telescope:sync`) subcommand to the `periscope` CLI binary (`periscope sync <project_iid>`).
+  - [x] Accepts project UUID, decrypts DSN and storage credentials via AES-256-GCM, and executes collector pipeline.
+  - [x] Structured JSON logging and deterministic exit codes for cron runners and external orchestrators.
 
 ### Phase 4: UI Scaffolding (React + Vite)
 - [x] Initialize Vite frontend in `ui/` directory.

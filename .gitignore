@@ -32,3 +32,6 @@ ui/node_modules/
 ui/dist/
 ui/.env.local
 ui/.env.*.local
+
+# Agent scratch directory
+.agents/

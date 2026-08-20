@@ -10,6 +10,7 @@ import (
 )
 
 type Project struct {
+	ID              int       `json:"-"`   // Internal DB primary key for FK relations & watermarks
 	IID             string    `json:"iid"` // We expose iid as iid to the API
 	Name            string    `json:"name"`
 	StorageType     string    `json:"storage_type"`
@@ -31,13 +32,13 @@ func ListProjects(ctx context.Context, userID int, globalRole string) ([]Project
 
 	if globalRole == "admin" {
 		rows, err = Pool.Query(ctx, `
-			SELECT iid, name, storage_type, storage_bucket, storage_region, storage_endpoint, prune_enabled, created_at, updated_at
+			SELECT id, iid, name, storage_type, storage_bucket, storage_region, storage_endpoint, prune_enabled, created_at, updated_at
 			FROM projects
 			ORDER BY name ASC
 		`)
 	} else {
 		rows, err = Pool.Query(ctx, `
-			SELECT p.iid, p.name, p.storage_type, p.storage_bucket, p.storage_region, p.storage_endpoint, p.prune_enabled, p.created_at, p.updated_at
+			SELECT p.id, p.iid, p.name, p.storage_type, p.storage_bucket, p.storage_region, p.storage_endpoint, p.prune_enabled, p.created_at, p.updated_at
 			FROM projects p
 			JOIN project_memberships pm ON p.id = pm.project_id
 			WHERE pm.user_id = $1
@@ -53,7 +54,7 @@ func ListProjects(ctx context.Context, userID int, globalRole string) ([]Project
 	var projects []Project
 	for rows.Next() {
 		var p Project
-		if err := rows.Scan(&p.IID, &p.Name, &p.StorageType, &p.StorageBucket, &p.StorageRegion, &p.StorageEndpoint, &p.PruneEnabled, &p.CreatedAt, &p.UpdatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.IID, &p.Name, &p.StorageType, &p.StorageBucket, &p.StorageRegion, &p.StorageEndpoint, &p.PruneEnabled, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, err
 		}
 		projects = append(projects, p)
@@ -78,11 +79,11 @@ func GetProject(ctx context.Context, iid string) (*Project, error) {
 	var encDSN, encAccess, encSecret string
 
 	err := Pool.QueryRow(ctx, `
-		SELECT iid, name, encrypted_source_dsn, storage_type, storage_bucket, storage_region, storage_endpoint, 
+		SELECT id, iid, name, encrypted_source_dsn, storage_type, storage_bucket, storage_region, storage_endpoint, 
 		       encrypted_storage_access_key, encrypted_storage_secret_key, prune_enabled, created_at, updated_at
 		FROM projects
 		WHERE iid = $1
-	`, iid).Scan(&p.IID, &p.Name, &encDSN, &p.StorageType, &p.StorageBucket, &p.StorageRegion, &p.StorageEndpoint,
+	`, iid).Scan(&p.ID, &p.IID, &p.Name, &encDSN, &p.StorageType, &p.StorageBucket, &p.StorageRegion, &p.StorageEndpoint,
 		&encAccess, &encSecret, &p.PruneEnabled, &p.CreatedAt, &p.UpdatedAt)
 
 	if err != nil {
@@ -98,6 +99,11 @@ func GetProject(ctx context.Context, iid string) (*Project, error) {
 	p.StorageSecretKey, _ = crypto.Decrypt(encSecret)
 
 	return &p, nil
+}
+
+// GetProjectByIID is an alias for GetProject.
+func GetProjectByIID(ctx context.Context, iid string) (*Project, error) {
+	return GetProject(ctx, iid)
 }
 
 func CreateProject(ctx context.Context, userID int, p *Project) error {
@@ -123,6 +129,7 @@ func CreateProject(ctx context.Context, userID int, p *Project) error {
 	if err != nil {
 		return err
 	}
+	p.ID = projectID
 
 	if userID > 0 {
 		_, err = tx.Exec(ctx, `
