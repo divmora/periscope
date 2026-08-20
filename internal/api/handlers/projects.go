@@ -2,12 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/divmora/periscope/internal/api"
 	"github.com/divmora/periscope/internal/auth"
 	"github.com/divmora/periscope/internal/store"
+	"github.com/go-chi/chi/v5"
 )
 
 // GetProjects lists all projects
@@ -48,6 +49,8 @@ func GetProjectConfig(w http.ResponseWriter, r *http.Request) {
 
 // CreateProject creates a new project
 func CreateProject(w http.ResponseWriter, r *http.Request) {
+	userID, _ := r.Context().Value(auth.UserIDKey).(int)
+
 	var req store.Project
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		api.RespondError(w, http.StatusBadRequest, "INVALID_PAYLOAD", "Invalid request body", err.Error())
@@ -63,7 +66,7 @@ func CreateProject(w http.ResponseWriter, r *http.Request) {
 		req.StorageType = "s3"
 	}
 
-	if err := store.CreateProject(r.Context(), &req); err != nil {
+	if err := store.CreateProject(r.Context(), userID, &req); err != nil {
 		api.RespondError(w, http.StatusInternalServerError, "DB_ERROR", "Failed to create project", err.Error())
 		return
 	}
@@ -117,4 +120,24 @@ func UpdateProjectConfig(w http.ResponseWriter, r *http.Request) {
 	project.StorageSecretKey = ""
 
 	api.RespondJSON(w, http.StatusOK, project, nil)
+}
+
+// DeleteProject deletes a project
+func DeleteProject(w http.ResponseWriter, r *http.Request) {
+	projectID := chi.URLParam(r, "projectId")
+	if projectID == "" {
+		api.RespondError(w, http.StatusBadRequest, "INVALID_PARAMS", "Project ID is required", nil)
+		return
+	}
+
+	if err := store.DeleteProject(r.Context(), projectID); err != nil {
+		if errors.Is(err, store.ErrProjectNotFound) {
+			api.RespondError(w, http.StatusNotFound, "NOT_FOUND", "Project not found", nil)
+			return
+		}
+		api.RespondError(w, http.StatusInternalServerError, "DB_ERROR", "Failed to delete project", err.Error())
+		return
+	}
+
+	api.RespondJSON(w, http.StatusOK, map[string]string{"message": "Project deleted successfully"}, nil)
 }

@@ -100,7 +100,7 @@ func GetProject(ctx context.Context, iid string) (*Project, error) {
 	return &p, nil
 }
 
-func CreateProject(ctx context.Context, p *Project) error {
+func CreateProject(ctx context.Context, userID int, p *Project) error {
 	encDSN, err := crypto.Encrypt(p.SourceDSN)
 	if err != nil {
 		return fmt.Errorf("failed to encrypt DSN: %w", err)
@@ -108,13 +108,34 @@ func CreateProject(ctx context.Context, p *Project) error {
 	encAccess, _ := crypto.Encrypt(p.StorageAccessKey)
 	encSecret, _ := crypto.Encrypt(p.StorageSecretKey)
 
-	err = Pool.QueryRow(ctx, `
+	tx, err := Pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	var projectID int
+	err = tx.QueryRow(ctx, `
 		INSERT INTO projects (name, encrypted_source_dsn, storage_type, storage_bucket, storage_region, storage_endpoint, encrypted_storage_access_key, encrypted_storage_secret_key, prune_enabled)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-		RETURNING iid, created_at, updated_at
-	`, p.Name, encDSN, p.StorageType, p.StorageBucket, p.StorageRegion, p.StorageEndpoint, encAccess, encSecret, p.PruneEnabled).Scan(&p.IID, &p.CreatedAt, &p.UpdatedAt)
+		RETURNING id, iid, created_at, updated_at
+	`, p.Name, encDSN, p.StorageType, p.StorageBucket, p.StorageRegion, p.StorageEndpoint, encAccess, encSecret, p.PruneEnabled).Scan(&projectID, &p.IID, &p.CreatedAt, &p.UpdatedAt)
+	if err != nil {
+		return err
+	}
 
-	return err
+	if userID > 0 {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO project_memberships (project_id, user_id, role)
+			VALUES ($1, $2, 'admin'::project_role)
+			ON CONFLICT (project_id, user_id) DO NOTHING
+		`, projectID, userID)
+		if err != nil {
+			return fmt.Errorf("failed to add creator as admin: %w", err)
+		}
+	}
+
+	return tx.Commit(ctx)
 }
 
 func UpdateProject(ctx context.Context, p *Project) error {
@@ -141,4 +162,15 @@ func UpdateProject(ctx context.Context, p *Project) error {
 	`, p.Name, encDSN, p.StorageType, p.StorageBucket, p.StorageRegion, p.StorageEndpoint, encAccess, encSecret, p.PruneEnabled, p.IID)
 
 	return err
+}
+
+func DeleteProject(ctx context.Context, iid string) error {
+	res, err := Pool.Exec(ctx, `DELETE FROM projects WHERE iid = $1`, iid)
+	if err != nil {
+		return err
+	}
+	if res.RowsAffected() == 0 {
+		return ErrProjectNotFound
+	}
+	return nil
 }

@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/divmora/periscope/internal/api"
 	"github.com/divmora/periscope/internal/store"
@@ -12,20 +13,43 @@ import (
 type contextKey string
 
 const (
-	UserIDKey     contextKey = "userID"
-	GlobalRoleKey contextKey = "globalRole"
+	UserIDKey      contextKey = "userID"
+	GlobalRoleKey  contextKey = "globalRole"
+	ProjectRoleKey contextKey = "projectRole"
+	ProjectIIDKey  contextKey = "projectIID"
 )
 
-// RequireAuth validates the JWT from the periscope_session cookie
+// Project roles
+const (
+	RoleViewer = "viewer"
+	RoleMember = "member"
+	RoleAdmin  = "admin"
+)
+
+// RequireAuth validates the JWT from the Authorization header (Bearer) or periscope_session cookie
 func RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie("periscope_session")
-		if err != nil {
-			api.RespondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing authentication cookie", nil)
+		var tokenString string
+
+		// 1. Check Authorization header
+		authHeader := r.Header.Get("Authorization")
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			tokenString = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+
+		// 2. Fallback to HttpOnly cookie
+		if tokenString == "" {
+			if cookie, err := r.Cookie("periscope_session"); err == nil {
+				tokenString = cookie.Value
+			}
+		}
+
+		if tokenString == "" {
+			api.RespondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing authentication token or cookie", nil)
 			return
 		}
 
-		claims, err := ValidateToken(cookie.Value)
+		claims, err := ValidateToken(tokenString)
 		if err != nil {
 			api.RespondError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid or expired token", nil)
 			return
@@ -50,15 +74,24 @@ func RequireGlobalAdmin(next http.Handler) http.Handler {
 	})
 }
 
-// RequireProjectAccess ensures the user is either a Global Admin or a member of the requested project
+// RequireProjectAccess ensures the user has access to the project specified in the URL.
+// Injects ProjectRoleKey and ProjectIIDKey into the request context.
 func RequireProjectAccess(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		role, _ := r.Context().Value(GlobalRoleKey).(string)
+		globalRole, _ := r.Context().Value(GlobalRoleKey).(string)
 		userID, ok := r.Context().Value(UserIDKey).(int)
 
-		// Super Admins bypass project-level checks
-		if role == "admin" {
-			next.ServeHTTP(w, r)
+		projectIID := chi.URLParam(r, "projectId")
+		if projectIID == "" {
+			api.RespondError(w, http.StatusBadRequest, "INVALID_PROJECT", "Project ID is required in URL", nil)
+			return
+		}
+
+		// Super Admins automatically have full admin access across all projects
+		if globalRole == "admin" {
+			ctx := context.WithValue(r.Context(), ProjectRoleKey, RoleAdmin)
+			ctx = context.WithValue(ctx, ProjectIIDKey, projectIID)
+			next.ServeHTTP(w, r.WithContext(ctx))
 			return
 		}
 
@@ -67,24 +100,43 @@ func RequireProjectAccess(next http.Handler) http.Handler {
 			return
 		}
 
-		projectIID := chi.URLParam(r, "projectId")
-		if projectIID == "" {
-			api.RespondError(w, http.StatusBadRequest, "INVALID_PROJECT", "Project ID is required", nil)
-			return
-		}
-
-		// Check project_memberships table
-		hasAccess, err := store.CheckProjectAccess(r.Context(), userID, projectIID)
+		role, err := store.GetProjectRole(r.Context(), userID, projectIID)
 		if err != nil {
 			api.RespondError(w, http.StatusInternalServerError, "DB_ERROR", "Failed to verify project access", nil)
 			return
 		}
 
-		if !hasAccess {
+		if role == "" {
 			api.RespondError(w, http.StatusForbidden, "FORBIDDEN", "You do not have access to this project", nil)
 			return
 		}
 
+		ctx := context.WithValue(r.Context(), ProjectRoleKey, role)
+		ctx = context.WithValue(ctx, ProjectIIDKey, projectIID)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// RequireProjectMember ensures the user has at least 'member' or 'admin' role on the scoped project
+func RequireProjectMember(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		role, _ := r.Context().Value(ProjectRoleKey).(string)
+		if role != RoleMember && role != RoleAdmin {
+			api.RespondError(w, http.StatusForbidden, "FORBIDDEN", "Member or Admin privileges required for this action", nil)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// RequireProjectAdmin ensures the user has 'admin' role on the scoped project
+func RequireProjectAdmin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		role, _ := r.Context().Value(ProjectRoleKey).(string)
+		if role != RoleAdmin {
+			api.RespondError(w, http.StatusForbidden, "FORBIDDEN", "Admin privileges required for this action", nil)
+			return
+		}
 		next.ServeHTTP(w, r)
 	})
 }

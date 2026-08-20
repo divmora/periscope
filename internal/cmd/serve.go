@@ -52,37 +52,46 @@ var serveCmd = &cobra.Command{
 		// API Routes
 		r.Route("/api", func(r chi.Router) {
 
-			// Public Auth Routes
+			// Public & Session Auth Routes
 			r.Route("/auth", func(r chi.Router) {
 				r.Post("/login", handlers.Login)
-				// r.Post("/logout", handlers.Logout)
+				r.Post("/logout", handlers.Logout)
 
 				// Protected Auth Routes
 				r.With(auth.RequireAuth).Get("/me", handlers.Me)
 			})
 
-			// Protected Routes
+			// Protected Project Routes
 			r.Group(func(r chi.Router) {
 				r.Use(auth.RequireAuth)
 
 				r.Route("/projects", func(r chi.Router) {
 					r.Get("/", handlers.GetProjects)
-
-					// Only global admins can create projects
-					r.With(auth.RequireGlobalAdmin).Post("/", handlers.CreateProject)
+					r.Post("/", handlers.CreateProject)
 
 					r.Route("/{projectId}", func(r chi.Router) {
-						// Ensure user is global admin or explicitly added to this project
-						// r.Use(auth.RequireProjectAccess)
+						// Ensure user has access to this project (or is global admin)
+						r.Use(auth.RequireProjectAccess)
 
-						// r.Get("/config", handlers.GetProjectConfig)
-						// r.Put("/config", handlers.UpdateProjectConfig)
+						// Project Configuration (Admin only)
+						r.With(auth.RequireProjectAdmin).Get("/config", handlers.GetProjectConfig)
+						r.With(auth.RequireProjectAdmin).Put("/config", handlers.UpdateProjectConfig)
+						r.With(auth.RequireProjectAdmin).Delete("/", handlers.DeleteProject)
 
+						// Project Memberships (RBAC management)
+						r.Route("/members", func(r chi.Router) {
+							r.Get("/", handlers.ListProjectMembers)
+							r.With(auth.RequireProjectAdmin).Post("/", handlers.AddProjectMember)
+							r.With(auth.RequireProjectAdmin).Put("/{userIid}", handlers.UpdateProjectMember)
+							r.With(auth.RequireProjectAdmin).Delete("/{userIid}", handlers.RemoveProjectMember)
+						})
+
+						// Telescope Telemetry Data
 						r.Route("/telescope", func(r chi.Router) {
-							// r.Get("/requests", handlers.GetRequests)
-							// r.Get("/exceptions", handlers.GetExceptions)
-							// r.Get("/queries", handlers.GetQueries)
-							// r.Get("/logs", handlers.GetLogs)
+							r.Get("/requests", handlers.GetRequests)
+							r.Get("/exceptions", handlers.GetExceptions)
+							r.Get("/queries", handlers.GetQueries)
+							r.Get("/logs", handlers.GetLogs)
 						})
 					})
 				})

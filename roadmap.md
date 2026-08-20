@@ -80,12 +80,13 @@ periscope/
 ### Phase 2: Authentication & API Foundation
 - [x] Implement Go routing (`github.com/go-chi/chi/v5`) (`internal/api`).
   - [x] Implement URL Path-Based scoping (e.g. `/api/projects/{projectId}/...`).
-- [ ] Implement User Management and Authentication (`internal/auth`).
-  - [ ] Username/Password based login.
-  - [ ] HTTP-Only Cookie and JWT generation/validation.
-  - [ ] Password hashing (bcrypt).
+- [x] Implement User Management and Authentication (`internal/auth`).
+  - [x] Username/Password based login.
+  - [x] HTTP-Only Cookie and JWT generation/validation (with Bearer token fallback).
+  - [x] Password hashing (bcrypt).
   - *Note: OAuth2/SSO and MFA (Multi-Factor Authentication) support are planned for a later phase.*
 - [x] Implement RBAC Middleware (Admin, Member, Viewer roles) and Multi-tenant isolation.
+- [x] Implement Project Memberships Management and Role delegation.
 
 ### Phase 3: Data Extraction & Storage Layer (The Collector Engine)
 - [ ] Implement Pluggable Storage Drivers (`internal/storage`):

@@ -17,6 +17,14 @@ export interface Project {
   storage_secret_key?: string;
 }
 
+export interface ProjectMember {
+  user_iid: string;
+  username: string;
+  email: string;
+  role: "viewer" | "member" | "admin";
+  created_at: string;
+}
+
 export const ProjectsAPI = {
   /**
    * List all projects the user has access to.
@@ -49,6 +57,59 @@ export const ProjectsAPI = {
     return fetchAPI<Project>(`/projects/${projectId}/config`, {
       method: "PUT",
       body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Delete a project.
+   */
+  deleteProject: async (projectId: string): Promise<APIResponse<{ message: string }>> => {
+    return fetchAPI<{ message: string }>(`/projects/${projectId}`, {
+      method: "DELETE",
+    });
+  },
+
+  /**
+   * List all members of a project.
+   */
+  listMembers: async (projectId: string): Promise<APIResponse<ProjectMember[]>> => {
+    return fetchAPI<ProjectMember[]>(`/projects/${projectId}/members`);
+  },
+
+  /**
+   * Add or invite a member to a project.
+   */
+  addMember: async (
+    projectId: string,
+    userIdentifier: string,
+    role: "viewer" | "member" | "admin"
+  ): Promise<APIResponse<ProjectMember>> => {
+    return fetchAPI<ProjectMember>(`/projects/${projectId}/members`, {
+      method: "POST",
+      body: JSON.stringify({ user_identifier: userIdentifier, role }),
+    });
+  },
+
+  /**
+   * Update a project member's role.
+   */
+  updateMemberRole: async (
+    projectId: string,
+    userIid: string,
+    role: "viewer" | "member" | "admin"
+  ): Promise<APIResponse<{ message: string }>> => {
+    return fetchAPI<{ message: string }>(`/projects/${projectId}/members/${userIid}`, {
+      method: "PUT",
+      body: JSON.stringify({ role }),
+    });
+  },
+
+  /**
+   * Remove a member from a project.
+   */
+  removeMember: async (projectId: string, userIid: string): Promise<APIResponse<{ message: string }>> => {
+    return fetchAPI<{ message: string }>(`/projects/${projectId}/members/${userIid}`, {
+      method: "DELETE",
     });
   },
 };
