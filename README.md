@@ -6,9 +6,40 @@ Periscope is a performant, enterprise-grade telemetry lakehouse and dashboard. I
 
 - **Backend:** Go 1.25+ (Single static binary)
 - **Metadata Database:** PostgreSQL 17+ (Configuration, RBAC, Users, watermarks)
-- **Lakehouse Storage:** Apache Parquet files in S3 / MinIO
+- **Lakehouse Storage:** Apache Parquet files with ZSTD compression in S3 / MinIO / Cloudflare R2 / Local Disk
 - **OLAP Engine:** DuckDB (Embedded in Go)
-- **Frontend:** React + Vite + Tailwind CSS v4 (Embedded into the Go binary)
+- **Frontend:** React + Vite + Tailwind CSS (Embedded into the Go binary)
+
+For full architectural specifications, sequence diagrams, and storage layouts, see [docs/architecture.md](docs/architecture.md).
+
+```mermaid
+graph TB
+    subgraph "External Sources"
+        L_DB["Laravel DB (MySQL/PG)"]
+        DAS["Aurora DAS / Postgres Audit"]
+    end
+
+    subgraph "Single Periscope Binary"
+        CLI["CLI Sync Engine (periscope sync)"]
+        COL["Collector & ZSTD Parquet Encoder"]
+        DUCK["Embedded DuckDB Engine"]
+        API["HTTP API Server (:8006)"]
+        UI["Embedded React SPA"]
+    end
+
+    subgraph "Storage"
+        PG_META[("PostgreSQL 17<br/>Metadata, RBAC & Watermarks")]
+        LAKEHOUSE[("S3 / MinIO / Disk Lakehouse<br/>projectId=.../source=.../type=.../")]
+    end
+
+    L_DB -->|"Incremental Drain"| COL
+    DAS -->|"Stream Ingest"| COL
+    COL -->|"ZSTD Parquet Batches"| LAKEHOUSE
+    COL -->|"Update Watermarks"| PG_META
+    API -->|"Zero-Copy Parquet Query"| DUCK
+    DUCK --> LAKEHOUSE
+    UI --> API
+```
 
 ## Single Binary Deployment
 
