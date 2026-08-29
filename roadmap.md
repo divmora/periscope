@@ -1,15 +1,16 @@
 # Periscope Roadmap
 
-**Periscope** (CLI binary: `periscope`) is an enterprise-grade multi-tenant telemetry lakehouse and observability platform for Laravel applications. 
+**Periscope** (CLI binary: `periscope`) is an enterprise-grade multi-tenant telemetry, database audit, and log lakehouse observability platform.
 
-Instead of keeping heavy telemetry in the operational MySQL/PostgreSQL databases forever, `periscope` periodically drains entries from each Laravel application's Telescope tables, denormalizes them, saves compressed Parquet batches to project-isolated storage targets (AWS S3, Cloudflare R2, MinIO, or Local Disk), indexes searchable metadata into a central PostgreSQL instance, and serves a modern, multi-tenant web dashboard.
+While originally designed for Laravel Telescope telemetry, Periscope is architected as a universal, high-throughput lakehouse engine for database logs, audit trails, and application observability. It periodically drains entries from source databases and streams (Laravel Telescope, **AWS Aurora Database Activity Streams (DAS)**, **PostgreSQL Audit Logs (`pgaudit`)**, and custom DB log tables), denormalizes and extracts structured dimensions, saves compressed Parquet batches to project-isolated storage targets (AWS S3, Cloudflare R2, MinIO, or Local Disk), indexes searchable watermarks and metadata into PostgreSQL, and serves an embedded DuckDB-powered analytics dashboard.
 
 ## 🎯 Core Objectives
 
-1.  **Data Export & Archiving (CLI):** Drain entries from Laravel Telescope, denormalize them, and save compressed Parquet batches to project-isolated storage targets (S3, R2, MinIO, Local Disk) using Hive-partitioning.
-2.  **Data Parsing & Optimization:** Parse known JSON content from Telescope into structured columns/fields to enable advanced filtering and querying. Unknown or dynamic content will remain stored as JSON.
-3.  **Visualization & Querying (Server/UI):** Serve a modern, multi-tenant web dashboard that closely mimics the original Laravel Telescope interface, operating on the archived data.
-4.  **Metadata & User Management:** Index searchable metadata and manage user accounts, multi-tenancy, and RBAC using a central PostgreSQL instance.
+1.  **Multi-Source Data Ingestion & Archiving (CLI):** Drain telemetry, audit logs, and activity events from multiple database sources (Laravel Telescope, Aurora DAS, PostgreSQL audit tables, generic DB log schemas) into compressed, Hive-partitioned Parquet batches in cold storage (S3, R2, MinIO, Local Disk).
+2.  **Pluggable Schema & Dimension Extraction:** Extract typed dimensions (users, queries, execution duration, status codes, audit classes, statements, IPs) from known log formats while preserving full raw JSON/event payloads. Extensible to custom DB log table structures.
+3.  **Embedded OLAP Querying (DuckDB):** Embed DuckDB directly in Go to execute high-performance SQL queries over partitioned Parquet files in S3/MinIO/Disk without duplicating telemetry or audit rows in PostgreSQL.
+4.  **Multi-Tenant Dashboard & Unified Observability:** Serve a modern, multi-tenant web dashboard scoped per project (`:projectId`) with dedicated views for Application Telemetry (Requests, Queries, Exceptions, Jobs, Logs) and Database Audit/Activity Logs (Aurora DAS, Postgres Audit).
+5.  **Metadata, Watermarking & RBAC:** Index checkpoint watermarks, project configurations, encrypted credentials, and role-based permissions (Admin, Member, Viewer) in a central PostgreSQL instance.
 
 ---
 
@@ -103,22 +104,53 @@ periscope/
   - [x] Accepts project UUID, decrypts DSN and storage credentials via AES-256-GCM, and executes collector pipeline.
   - [x] Structured JSON logging and deterministic exit codes for cron runners and external orchestrators.
 
-### Phase 4: UI Scaffolding (React + Vite)
-- [x] Initialize Vite frontend in `ui/` directory.
-- [x] Install Tailwind CSS and Shadcn UI.
+### Phase 4: Embedded DuckDB OLAP Engine & Telemetry Query API
+- [ ] Embed DuckDB engine into Go backend (`internal/olap` or `internal/query`) for zero-copy querying of Parquet files.
+- [ ] Support direct SQL queries over Parquet partitions in AWS S3, MinIO, Cloudflare R2, and Local Disk (using DuckDB `httpfs` extension and local file scans).
+- [ ] Replace mock handlers in `internal/api/handlers/` (`requests.go`, `exceptions.go`, `queries.go`, `logs.go`) with live DuckDB query execution.
+- [ ] Implement robust query filtering (date/time ranges, status codes, methods, duration thresholds, tags, full-text search) and pagination.
+- [ ] Connect dashboard charts and metrics aggregations (throughput, error rates, latency percentiles) to DuckDB queries.
+
+### Phase 5: Multi-Source Database Log & Audit Ingestion
+- [ ] **Extensible Collector Ingestion Framework**:
+  - [ ] Define generic `LogSource` and `LogRecord` interfaces in `internal/collector/` to support diverse database log sources beyond Laravel Telescope.
+  - [ ] Schema mapping configuration per project (timestamp column, sequence/watermark identifier, payload format, type classification).
+- [ ] **AWS Aurora Database Activity Streams (DAS)**:
+  - [ ] Aurora DAS Stream consumer (AWS Kinesis / CloudWatch / S3 activity stream format).
+  - [ ] AWS KMS decryption of encrypted DAS activity records.
+  - [ ] Dimension extraction: DB User, Client IP, Session ID, Database Name, SQL Statement, Error Codes, Execution Time, Client Application Name.
+  - [ ] Partitioning scheme: `projectId={id}/source=aurora_das/year={YYYY}/month={MM}/day={DD}/hour={HH}/`.
+- [ ] **PostgreSQL Audit Logs (`pgaudit` & Custom Audit Tables)**:
+  - [ ] Support `pgaudit` log format draining and custom PostgreSQL audit log tables.
+  - [ ] Dimension extraction: Audit Type (READ, WRITE, FUNCTION, ROLE, DDL, MISC), Statement, User, Schema, Relation/Table, Command, Query Duration.
+  - [ ] Incremental sequence/timestamp watermarking and optional pruning.
+  - [ ] Partitioning scheme: `projectId={id}/source=postgres_audit/year={YYYY}/month={MM}/day={DD}/hour={HH}/`.
+- [ ] **Generic Database Log Table Adapter**:
+  - [ ] Configurable table-based drainer for custom MySQL/PostgreSQL log and event tables.
+  - [ ] Dynamic JSON dimension extractor and schema evolution handling.
+- [ ] **Audit & Activity Log Dashboard UI**:
+  - [ ] Dedicated UI views for Database Activity Streams and Postgres Audit logs.
+  - [ ] SQL syntax highlighting, user filtering, IP geolocation/client tracking, and query pattern breakdown.
+
+### Phase 6: Frontend UI Polish & Advanced Components
+- [x] Initialize Vite frontend in `ui/` directory with Tailwind CSS and Shadcn UI.
 - [x] Implement standard API wrappers (`src/api`) and types (`src/types`).
 - [x] Implement React Router DOM with `/:projectId` scoped URLs.
 - [x] Scaffold layout mirroring the FinGrid Dark Theme aesthetic (Sidebar, Topbar).
 - [x] Build robust data table components with pagination using TanStack Table & Query.
-- [x] Build core views (Dashboard, Settings, Requests, Exceptions) scoped to the project ID.
-- [ ] Implement specialized components (JSON Viewer, SQL highlighter).
+- [x] Build core views (Dashboard, Settings, Requests, Exceptions, Queries, Logs) scoped to the project ID.
+- [ ] Implement specialized components:
+  - [ ] Interactive JSON tree viewer with copy & search.
+  - [ ] Formatted SQL query highlighter with copy and execution plan drawer.
+  - [ ] Time-range picker (Last 15m, 1h, 24h, 7d, Custom Range) with auto-refresh.
 
-### Phase 5: Automated Testing
-- [ ] **Backend Unit Testing**: Write Go tests for `internal/crypto`, `internal/auth`, and `internal/store`.
-- [ ] **Frontend E2E Testing**: Initialize Playwright in `ui/` and write automated scripts to validate UI flows (e.g., Login, Project Selection).
+### Phase 7: Automated Testing & Verification
+- [x] **Collector & Storage Test Suites**: 5-Tier comprehensive unit, integration, and adversarial stress tests (100% pass across storage, collector, watermark, and CLI sync).
+- [ ] **Backend Unit Testing**: Go tests for `internal/crypto`, `internal/auth`, `internal/store`, and `internal/olap`.
+- [ ] **Frontend E2E Testing**: Initialize Playwright in `ui/` and write automated scripts to validate UI flows (Login, Project Selection, Navigation, Data Tables, Settings).
 
-### Phase 6: Packaging & Deployment
-- [ ] Set up `embed.go` to serve the compiled `ui/dist` directory via the HTTP server.
-- [ ] Create the multi-stage production `Dockerfile` (builds UI + Go into 1 executable).
+### Phase 8: Packaging & Deployment
+- [ ] Set up `embed.go` to serve the compiled `ui/dist` directory via the single Go HTTP server.
+- [ ] Create the multi-stage production `Dockerfile` (builds UI + Go into 1 executable binary).
 - [ ] Set up GitHub Actions CI/CD with Google's **Release Please** for automated semantic versioning and changelogs.
-- [ ] Finalize documentation and deployment guides.
+- [ ] Finalize documentation, architecture diagrams, and deployment guides (Docker, Kubernetes, Bare Metal, Systemd).
