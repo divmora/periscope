@@ -6,9 +6,13 @@ import (
 	"github.com/google/uuid"
 )
 
-// PartitionKey uniquely identifies a Hive partition bucket by project, type, and hourly time slice in UTC.
+// DefaultSourceLaravelTelescope defines the standard source namespace for Laravel Telescope data.
+const DefaultSourceLaravelTelescope = "laravel_telescope"
+
+// PartitionKey uniquely identifies a Hive partition bucket by project, source, type, and hourly time slice in UTC.
 type PartitionKey struct {
 	ProjectIID string
+	Source     string
 	Type       string
 	Year       int
 	Month      int
@@ -19,8 +23,13 @@ type PartitionKey struct {
 // PartitionKeyFromRecord derives a PartitionKey from a TelemetryRecord and project IID, strictly normalizing to UTC.
 func PartitionKeyFromRecord(projectIID string, rec TelemetryRecord) PartitionKey {
 	utc := rec.CreatedAt.UTC()
+	source := rec.Source
+	if source == "" {
+		source = DefaultSourceLaravelTelescope
+	}
 	return PartitionKey{
 		ProjectIID: projectIID,
+		Source:     source,
 		Type:       rec.Type,
 		Year:       utc.Year(),
 		Month:      int(utc.Month()),
@@ -30,10 +39,14 @@ func PartitionKeyFromRecord(projectIID string, rec TelemetryRecord) PartitionKey
 }
 
 // PartitionDirectory returns the Hive partition prefix directory path.
-// Format: projectId={id}/type={type}/year={YYYY}/month={MM}/day={DD}/hour={HH}/
+// Format: projectId={id}/source={source}/type={type}/year={YYYY}/month={MM}/day={DD}/hour={HH}/
 func (k PartitionKey) PartitionDirectory() string {
-	return fmt.Sprintf("projectId=%s/type=%s/year=%04d/month=%02d/day=%02d/hour=%02d/",
-		k.ProjectIID, k.Type, k.Year, k.Month, k.Day, k.Hour)
+	source := k.Source
+	if source == "" {
+		source = DefaultSourceLaravelTelescope
+	}
+	return fmt.Sprintf("projectId=%s/source=%s/type=%s/year=%04d/month=%02d/day=%02d/hour=%02d/",
+		k.ProjectIID, source, k.Type, k.Year, k.Month, k.Day, k.Hour)
 }
 
 // PartitionFileName returns the standardized Parquet filename for a partition batch.

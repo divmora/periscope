@@ -239,10 +239,10 @@ func EncodeParquet(records []TelemetryRecord) ([]byte, error) {
 }
 
 // GenerateHivePartitionPath builds the exact Hive partition path and filename.
-// Template: `projectId={id}/type={type}/year={YYYY}/month={MM}/day={DD}/hour={HH}/part-{minSeq:012d}-{maxSeq:012d}-{batchUUID}.parquet`
+// Template: `projectId={id}/source=laravel_telescope/type={type}/year={YYYY}/month={MM}/day={DD}/hour={HH}/part-{minSeq:012d}-{maxSeq:012d}-{batchUUID}.parquet`
 func GenerateHivePartitionPath(projectID, entryType string, t time.Time, minSeq, maxSeq int64, batchUUID string) string {
 	utc := t.UTC()
-	return fmt.Sprintf("projectId=%s/type=%s/year=%04d/month=%02d/day=%02d/hour=%02d/part-%012d-%012d-%s.parquet",
+	return fmt.Sprintf("projectId=%s/source=laravel_telescope/type=%s/year=%04d/month=%02d/day=%02d/hour=%02d/part-%012d-%012d-%s.parquet",
 		projectID,
 		entryType,
 		utc.Year(),

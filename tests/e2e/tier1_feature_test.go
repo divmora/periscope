@@ -434,7 +434,7 @@ func TestTier1_HivePartitionPathFormat(t *testing.T) {
 
 	path := harness.GenerateHivePartitionPath(projectIID, entryType, timestamp, minSeq, maxSeq, batchUUID)
 
-	expectedPath := "projectId=01912345-6789-7abc-def0-1234567890ab/type=request/year=2026/month=08/day=20/hour=15/part-000000010001-000000020000-019123456789.parquet"
+	expectedPath := "projectId=01912345-6789-7abc-def0-1234567890ab/source=laravel_telescope/type=request/year=2026/month=08/day=20/hour=15/part-000000010001-000000020000-019123456789.parquet"
 	if path != expectedPath {
 		t.Errorf("Generated Hive path mismatch:\nExpected: %s\nGot:      %s", expectedPath, path)
 	}
@@ -446,6 +446,9 @@ func TestTier1_HivePartitionPathFormat(t *testing.T) {
 	}
 	if parsed.ProjectID != projectIID {
 		t.Errorf("Parsed ProjectID mismatch: %s vs %s", parsed.ProjectID, projectIID)
+	}
+	if parsed.Source != "laravel_telescope" {
+		t.Errorf("Parsed Source mismatch: %s vs laravel_telescope", parsed.Source)
 	}
 	if parsed.Type != entryType {
 		t.Errorf("Parsed Type mismatch: %s vs %s", parsed.Type, entryType)

@@ -20,12 +20,13 @@ type TelescopeEntry struct {
 // TelemetryRecord defines the complete typed Parquet schema encoded with ZSTD compression
 // and dictionary encoding for high cardinality string fields.
 type TelemetryRecord struct {
-	// Core Telescope Envelope
+	// Core Envelope
 	Sequence             int64     `parquet:"sequence,delta_binary_packed"`
 	UUID                 string    `parquet:"uuid,zstd"`
 	BatchID              string    `parquet:"batch_id,zstd"`
 	FamilyHash           *string   `parquet:"family_hash,zstd,optional"`
 	ShouldDisplayOnIndex bool      `parquet:"should_display_on_index,boolean"`
+	Source               string    `parquet:"source,dict,zstd"`
 	Type                 string    `parquet:"type,dict,zstd"`
 	CreatedAt            time.Time `parquet:"created_at,timestamp(microsecond)"`
 	Tags                 []string  `parquet:"tags,list,zstd"`

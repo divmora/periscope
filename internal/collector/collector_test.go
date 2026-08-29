@@ -511,7 +511,7 @@ func TestHivePartitionPathFormatting(t *testing.T) {
 		t.Fatalf("unexpected partition key: %+v", key)
 	}
 
-	expectedDir := "projectId=01912345-6789-7abc-def0-1234567890ab/type=request/year=2026/month=08/day=20/hour=06/"
+	expectedDir := "projectId=01912345-6789-7abc-def0-1234567890ab/source=laravel_telescope/type=request/year=2026/month=08/day=20/hour=06/"
 	if key.PartitionDirectory() != expectedDir {
 		t.Errorf("expected dir %s, got %s", expectedDir, key.PartitionDirectory())
 	}

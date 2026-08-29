@@ -15,6 +15,7 @@ import (
 // HivePartitionComponents stores parsed fields from a Hive partition path.
 type HivePartitionComponents struct {
 	ProjectID string
+	Source    string
 	Type      string
 	Year      int
 	Month     int
@@ -23,42 +24,49 @@ type HivePartitionComponents struct {
 	Filename  string
 }
 
-// HivePathRegex matches `projectId={id}/type={type}/year={YYYY}/month={MM}/day={DD}/hour={HH}/{filename}`
-var HivePathRegex = regexp.MustCompile(`^projectId=([^/]+)/type=([^/]+)/year=(\d{4})/month=(\d{2})/day=(\d{2})/hour=(\d{2})/(.+)$`)
+// HivePathRegex matches `projectId={id}/source={source}/type={type}/year={YYYY}/month={MM}/day={DD}/hour={HH}/{filename}`
+// or fallback without source for backwards compatibility.
+var HivePathRegex = regexp.MustCompile(`^projectId=([^/]+)/(?:source=([^/]+)/)?type=([^/]+)/year=(\d{4})/month=(\d{2})/day=(\d{2})/hour=(\d{2})/(.+)$`)
 
 // ParseHivePath parses and validates a partition path against the required specification.
 func ParseHivePath(path string) (*HivePartitionComponents, error) {
 	cleanPath := strings.TrimPrefix(path, "/")
 	matches := HivePathRegex.FindStringSubmatch(cleanPath)
-	if len(matches) != 8 {
-		return nil, fmt.Errorf("path '%s' does not match required Hive partition format: projectId={id}/type={type}/year={YYYY}/month={MM}/day={DD}/hour={HH}/filename", path)
+	if len(matches) != 9 {
+		return nil, fmt.Errorf("path '%s' does not match required Hive partition format: projectId={id}/source={source}/type={type}/year={YYYY}/month={MM}/day={DD}/hour={HH}/filename", path)
 	}
 
-	year, err := strconv.Atoi(matches[3])
+	source := matches[2]
+	if source == "" {
+		source = "laravel_telescope"
+	}
+
+	year, err := strconv.Atoi(matches[4])
 	if err != nil {
 		return nil, fmt.Errorf("invalid year in path: %w", err)
 	}
-	month, err := strconv.Atoi(matches[4])
+	month, err := strconv.Atoi(matches[5])
 	if err != nil || month < 1 || month > 12 {
-		return nil, fmt.Errorf("invalid month in path: %s", matches[4])
+		return nil, fmt.Errorf("invalid month in path: %s", matches[5])
 	}
-	day, err := strconv.Atoi(matches[5])
+	day, err := strconv.Atoi(matches[6])
 	if err != nil || day < 1 || day > 31 {
-		return nil, fmt.Errorf("invalid day in path: %s", matches[5])
+		return nil, fmt.Errorf("invalid day in path: %s", matches[6])
 	}
-	hour, err := strconv.Atoi(matches[6])
+	hour, err := strconv.Atoi(matches[7])
 	if err != nil || hour < 0 || hour > 23 {
-		return nil, fmt.Errorf("invalid hour in path: %s", matches[6])
+		return nil, fmt.Errorf("invalid hour in path: %s", matches[7])
 	}
 
 	return &HivePartitionComponents{
 		ProjectID: matches[1],
-		Type:      matches[2],
+		Source:    source,
+		Type:      matches[3],
 		Year:      year,
 		Month:     month,
 		Day:       day,
 		Hour:      hour,
-		Filename:  matches[7],
+		Filename:  matches[8],
 	}, nil
 }
 

@@ -17,6 +17,7 @@ func ExtractRecord(entry TelescopeEntry) TelemetryRecord {
 		BatchID:              entry.BatchID,
 		FamilyHash:           entry.FamilyHash,
 		ShouldDisplayOnIndex: entry.ShouldDisplayOnIndex,
+		Source:               DefaultSourceLaravelTelescope,
 		Type:                 entry.Type,
 		CreatedAt:            entry.CreatedAt.UTC(),
 		Tags:                 entry.Tags,

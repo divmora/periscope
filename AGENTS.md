@@ -21,7 +21,7 @@ Welcome to the `periscope` repository. If you are an AI agent working in this co
 - To filter and query data for the UI, the Go server must embed **DuckDB** to execute SQL queries directly against the Parquet files in S3/MinIO.
 
 ### 2. Parquet Partitioning & Batching
-- **Partitioning Scheme:** Parquet files MUST be partitioned in S3/MinIO using the exact structure: `projectId={id}/type={type}/year={YYYY}/month={MM}/day={DD}/hour={HH}/`. Schema evolution is handled via internal Parquet metadata, NOT path-based versioning.
+- **Partitioning Scheme:** Parquet files MUST be partitioned in S3/MinIO using the exact structure: `projectId={id}/source={source}/type={type}/year={YYYY}/month={MM}/day={DD}/hour={HH}/` (e.g. `source=laravel_telescope`, `source=aurora_das`, `source=postgres_audit`). Schema evolution is handled via internal Parquet metadata, NOT path-based versioning.
 - **Batching Strategy:** The `telescope:sync` collector flushes Parquet files based on a hybrid trigger: **10,000 rows**, a **1-hour time window**, OR a **100MB file size**. We do NOT want thousands of tiny KB-sized files.
 
 ### 3. CLI Structure
