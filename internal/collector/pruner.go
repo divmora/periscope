@@ -28,7 +28,7 @@ func prunePostgres(ctx context.Context, db *sql.DB, entryType string, maxSequenc
 	if err != nil {
 		return 0, fmt.Errorf("failed to begin transaction for postgres pruning: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	if entryType != "" {
 		// Delete tags first

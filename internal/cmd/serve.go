@@ -30,7 +30,6 @@ var serveCmd = &cobra.Command{
 
 		// A good base middleware stack
 		r.Use(middleware.RequestID)
-		r.Use(middleware.RealIP)
 		r.Use(middleware.Logger)
 		r.Use(middleware.Recoverer)
 

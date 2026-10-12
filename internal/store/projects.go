@@ -118,7 +118,7 @@ func CreateProject(ctx context.Context, userID int, p *Project) error {
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var projectID int
 	err = tx.QueryRow(ctx, `

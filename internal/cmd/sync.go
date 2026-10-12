@@ -500,11 +500,8 @@ var syncCmd = &cobra.Command{
 			ErrOut:     cmd.ErrOrStderr(),
 		}
 
-		code, err := RunSync(ctx, opts)
+		code, _ := RunSync(ctx, opts)
 		if code != ExitCodeSuccess {
-			if err != nil {
-				// error logged by RunSync
-			}
 			osExit(code)
 		}
 	},

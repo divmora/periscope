@@ -39,9 +39,7 @@ func OpenSourceDB(dsn string) (*sql.DB, Dialect, error) {
 		driverName = "pgx"
 	} else {
 		// Ensure parseTime=true is present for MySQL if not already specified
-		if strings.HasPrefix(cleanDSN, "mysql://") {
-			cleanDSN = strings.TrimPrefix(cleanDSN, "mysql://")
-		}
+		cleanDSN = strings.TrimPrefix(cleanDSN, "mysql://")
 		if !strings.Contains(cleanDSN, "parseTime=") {
 			if strings.Contains(cleanDSN, "?") {
 				cleanDSN += "&parseTime=true"

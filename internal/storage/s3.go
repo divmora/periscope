@@ -72,18 +72,6 @@ func NewS3Driver(ctx context.Context, cfg S3Config) (*S3Driver, error) {
 		))
 	}
 
-	if endpoint != "" {
-		customResolver := aws.EndpointResolverWithOptionsFunc(
-			func(service, reg string, options ...interface{}) (aws.Endpoint, error) {
-				return aws.Endpoint{
-					URL:               endpoint,
-					HostnameImmutable: true,
-					SigningRegion:     region,
-				}, nil
-			},
-		)
-		loadOpts = append(loadOpts, config.WithEndpointResolverWithOptions(customResolver))
-	}
 
 	awsCfg, err := config.LoadDefaultConfig(ctx, loadOpts...)
 	if err != nil {
