@@ -9,6 +9,9 @@
     "lint": "oxlint",
     "preview": "vite preview"
   },
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
     "@radix-ui/react-avatar": "^1.2.7",

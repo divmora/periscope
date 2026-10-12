@@ -8,7 +8,7 @@ Thank you for your interest in contributing to **`periscope`**! We welcome contr
 
 Ensure you have the following tools installed locally:
 - **Go**: Version 1.25 or higher
-- **Node.js**: Version 22 or higher
+- **Node.js**: Version 24 or higher
 - **pnpm**: Version 9 or 10 (for managing the `ui/` frontend workspace)
 - **Make**: For running automated build and test tasks
 - **Docker & Docker Compose**: For local PostgreSQL, MinIO, and live reload services
