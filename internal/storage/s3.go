@@ -20,14 +20,14 @@ import (
 // S3Config holds configuration settings for S3-compatible storage backends
 // (AWS S3, MinIO, Cloudflare R2, LocalStack).
 type S3Config struct {
-	Type            string `json:"type,omitempty"`             // "s3", "minio", "r2"
+	Type            string `json:"type,omitempty"` // "s3", "minio", "r2"
 	Bucket          string `json:"bucket"`
-	Region          string `json:"region,omitempty"`           // e.g. "us-east-1", "auto" for R2
-	Endpoint        string `json:"endpoint,omitempty"`         // Custom endpoint URL (e.g. "http://localhost:9000")
+	Region          string `json:"region,omitempty"`   // e.g. "us-east-1", "auto" for R2
+	Endpoint        string `json:"endpoint,omitempty"` // Custom endpoint URL (e.g. "http://localhost:9000")
 	AccessKeyID     string `json:"access_key_id,omitempty"`
 	SecretAccessKey string `json:"secret_access_key,omitempty"`
-	UsePathStyle    bool   `json:"use_path_style,omitempty"`   // Mandatory for MinIO
-	DisableSSL      bool   `json:"disable_ssl,omitempty"`      // Force HTTP for local dev
+	UsePathStyle    bool   `json:"use_path_style,omitempty"` // Mandatory for MinIO
+	DisableSSL      bool   `json:"disable_ssl,omitempty"`    // Force HTTP for local dev
 }
 
 // S3Driver implements the Driver interface using AWS SDK for Go v2.

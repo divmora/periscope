@@ -573,9 +573,9 @@ func TestS3Driver_Adversarial_MultiPagePagination(t *testing.T) {
 
 // Paging Mock S3 Server for pagination stress tests
 type pagingMockS3Server struct {
-	mu           sync.RWMutex
-	buckets      map[string]map[string]mockS3Item
-	pageSize     int
+	mu       sync.RWMutex
+	buckets  map[string]map[string]mockS3Item
+	pageSize int
 }
 
 func newPagingMockS3Server(pageSize int) *pagingMockS3Server {

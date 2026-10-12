@@ -61,7 +61,7 @@ func GenerateEntryPayload(entryType string, seed int64) (string, []string) {
 		method := methods[rng.Intn(len(methods))]
 		uri := uris[rng.Intn(len(uris))]
 		duration := float64(rng.Intn(5000)) / 10.0 // 0 to 500 ms
-		memory := float64(rng.Intn(640)) / 10.0   // 0 to 64 MB
+		memory := float64(rng.Intn(640)) / 10.0    // 0 to 64 MB
 		userID := fmt.Sprintf("%d", rng.Intn(100)+1)
 		userEmail := fmt.Sprintf("user%s@example.com", userID)
 

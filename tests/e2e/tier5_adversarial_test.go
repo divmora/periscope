@@ -367,10 +367,10 @@ func TestTier5_HighConcurrency_MultiProjectSimultaneousSync(t *testing.T) {
 // Tier 5 - Stress Test 3: Out-of-Order Sequence Insertion & Disordered Buffers
 // ===========================================================================
 // Verifies that:
-// 1. When records arrive in arbitrary/shuffled sequence orders within a buffer,
-//    the flusher correctly calculates minSequence and maxSequence.
-// 2. Out-of-order sequence insertion in source database adheres to monotonic watermark
-//    guarantees (watermark never regresses backwards).
+//  1. When records arrive in arbitrary/shuffled sequence orders within a buffer,
+//     the flusher correctly calculates minSequence and maxSequence.
+//  2. Out-of-order sequence insertion in source database adheres to monotonic watermark
+//     guarantees (watermark never regresses backwards).
 func TestTier5_OutOfOrder_SequenceInsertionSimulation(t *testing.T) {
 	ctx := context.Background()
 	tempDir := t.TempDir()
@@ -634,11 +634,11 @@ func TestTier5_CorruptedAndTruncated_JSONPayloads(t *testing.T) {
 // Tier 5 - Stress Test 5: Abrupt Storage / Network Disconnect During Streaming
 // ===========================================================================
 // Verifies two-phase commit safety:
-// 1. When storage upload encounters network disconnect or simulated 500/503 errors,
-//    watermark MUST NOT be updated in metadata database.
-// 2. Source database MUST NOT be pruned.
-// 3. Local temporary files must be cleaned up immediately.
-// 4. Retry after storage reconnection must resume without data loss or duplicates.
+//  1. When storage upload encounters network disconnect or simulated 500/503 errors,
+//     watermark MUST NOT be updated in metadata database.
+//  2. Source database MUST NOT be pruned.
+//  3. Local temporary files must be cleaned up immediately.
+//  4. Retry after storage reconnection must resume without data loss or duplicates.
 func TestTier5_AbruptStorageNetworkDisconnect_StreamingFailure(t *testing.T) {
 	ctx := context.Background()
 	s3Mock := harness.NewS3MockServer()

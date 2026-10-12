@@ -529,7 +529,7 @@ func TestHivePartitionPathFormatting(t *testing.T) {
 	}
 
 	// Verify timezone normalization to UTC
-	loc, _ := time.LoadLocation("Asia/Tokyo") // UTC+9
+	loc, _ := time.LoadLocation("Asia/Tokyo")             // UTC+9
 	tokyoTime := time.Date(2026, 8, 20, 15, 0, 0, 0, loc) // 15:00 JST == 06:00 UTC
 	recTokyo := collector.TelemetryRecord{
 		Type:      "query",
@@ -1069,4 +1069,3 @@ func TestNewCollectorValidation(t *testing.T) {
 		t.Error("expected error with invalid storage config, got nil")
 	}
 }
-

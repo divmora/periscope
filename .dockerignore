@@ -1,9 +1,32 @@
+# Git & CI/CD
 .git
 .gitignore
-.dockerignore
-.env
-tmp/
-bin/
+.github
+
+# Documentation & Specifications
 *.md
+
+# Secrets & Environment
+.env*
+*.pem
+*.key
+
+# Build outputs & caches
+bin/
+dist/
+tmp/
+node_modules/
+vendor/
+target/
 ui/node_modules/
 ui/dist/
+
+# Testing & Coverage
+coverage/
+*.cov
+*.test
+
+# IDE & OS Artifacts
+.idea/
+.vscode/
+.DS_Store

@@ -3,8 +3,8 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/divmora/periscope/internal/api"
+	"github.com/go-chi/chi/v5"
 )
 
 type QueryItem struct {

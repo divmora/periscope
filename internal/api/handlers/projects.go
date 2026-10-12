@@ -21,7 +21,7 @@ func GetProjects(w http.ResponseWriter, r *http.Request) {
 		api.RespondError(w, http.StatusInternalServerError, "DB_ERROR", "Failed to list projects", err.Error())
 		return
 	}
-	
+
 	// Ensure we return an empty array instead of null if no projects exist
 	if projects == nil {
 		projects = []store.Project{}
@@ -33,7 +33,7 @@ func GetProjects(w http.ResponseWriter, r *http.Request) {
 // GetProjectConfig gets a specific project's configuration
 func GetProjectConfig(w http.ResponseWriter, r *http.Request) {
 	projectID := chi.URLParam(r, "projectId")
-	
+
 	project, err := store.GetProject(r.Context(), projectID)
 	if err != nil {
 		api.RespondError(w, http.StatusInternalServerError, "DB_ERROR", "Failed to fetch project", err.Error())
@@ -82,7 +82,7 @@ func CreateProject(w http.ResponseWriter, r *http.Request) {
 // UpdateProjectConfig updates an existing project
 func UpdateProjectConfig(w http.ResponseWriter, r *http.Request) {
 	projectID := chi.URLParam(r, "projectId")
-	
+
 	project, err := store.GetProject(r.Context(), projectID)
 	if err != nil {
 		api.RespondError(w, http.StatusInternalServerError, "DB_ERROR", "Failed to fetch project", err.Error())
@@ -100,10 +100,18 @@ func UpdateProjectConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Merge updates
-	if req.Name != "" { project.Name = req.Name }
-	if req.SourceDSN != "" { project.SourceDSN = req.SourceDSN }
-	if req.StorageType != "" { project.StorageType = req.StorageType }
-	if req.StorageBucket != "" { project.StorageBucket = req.StorageBucket }
+	if req.Name != "" {
+		project.Name = req.Name
+	}
+	if req.SourceDSN != "" {
+		project.SourceDSN = req.SourceDSN
+	}
+	if req.StorageType != "" {
+		project.StorageType = req.StorageType
+	}
+	if req.StorageBucket != "" {
+		project.StorageBucket = req.StorageBucket
+	}
 	project.StorageRegion = req.StorageRegion
 	project.StorageEndpoint = req.StorageEndpoint
 	project.StorageAccessKey = req.StorageAccessKey

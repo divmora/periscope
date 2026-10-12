@@ -186,8 +186,8 @@ type WatermarkRecord struct {
 // for projects and telescope_watermarks tables.
 type MockMetadataDatabase struct {
 	mu         sync.RWMutex
-	projects   map[string]*store.Project // key: iid
-	projectIDs map[int]string            // id -> iid
+	projects   map[string]*store.Project   // key: iid
+	projectIDs map[int]string              // id -> iid
 	watermarks map[string]*WatermarkRecord // key: fmt.Sprintf("%d:%s", projectID, entryType)
 	failUpsert bool
 }

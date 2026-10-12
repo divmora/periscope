@@ -112,9 +112,9 @@ func TestIsValidUUID(t *testing.T) {
 		"not-a-uuid",
 		"12345",
 		"01912345-6789-7abc-def0-1234567890zz", // invalid hex
-		"01912345-6789-7abc-def0",               // too short
+		"01912345-6789-7abc-def0",              // too short
 		"01912345-6789-7abc-def0-1234567890abcdef", // too long
-		"01912345_6789_7abc_def0_1234567890ab", // underscores instead of hyphens
+		"01912345_6789_7abc_def0_1234567890ab",     // underscores instead of hyphens
 	}
 	for _, u := range invalidUUIDs {
 		if IsValidUUID(u) {
@@ -760,12 +760,12 @@ func TestSyncPipelineWithRealLocalDriver(t *testing.T) {
 		CollectorRunner: func(ctx context.Context, cfg collector.CollectorConfig) (*collector.SyncResult, error) {
 			// Ingest 3 real records using flusher
 			flusher := collector.NewFlusher(collector.FlusherConfig{
-				ProjectID:     cfg.ProjectID,
-				ProjectIID:    cfg.ProjectIID,
-				BatchSize:     cfg.BatchSize,
-				Driver:        cfg.StorageDriver,
-				PruneEnabled:  cfg.PruneEnabled,
-				DryRun:        cfg.DryRun,
+				ProjectID:    cfg.ProjectID,
+				ProjectIID:   cfg.ProjectIID,
+				BatchSize:    cfg.BatchSize,
+				Driver:       cfg.StorageDriver,
+				PruneEnabled: cfg.PruneEnabled,
+				DryRun:       cfg.DryRun,
 				WatermarkUpdater: func(ctx context.Context, projectID int, entryType string, seq int64) error {
 					watermarkStore[entryType] = seq
 					return nil

@@ -13,6 +13,8 @@ Welcome to the `periscope` repository. If you are an AI agent working in this co
 - **Frontend:** Vite + React + Tailwind CSS + Lucide Icons + TanStack Table/Query (located strictly inside `/ui`, managed with `pnpm`)
 - **Communication:** gRPC for communication between `telescope:sync` workers and the central server.
 
+---
+
 ## 🏗️ Architectural Directives
 
 ### 1. Parquet is the Single Source of Truth
@@ -50,11 +52,58 @@ There is only **ONE** executable binary: `periscope`.
 - All views, API endpoints, and collector routines are strictly isolated by `project_iid` (which maps to the `iid` column).
 - Ensure role-based checks (Admin, Member, Viewer) are enforced via middleware on all API routes based on the `project_memberships` table.
 
+---
+
+## 🛡️ Safety & Mutating Operations
+
+- Any mutating CLI commands that modify external databases or prune source records (such as safe pruning in collectors) must provide dry-run safety by default or require explicit confirmation flags (`--prune` or `--approve`).
+- Always preserve data integrity before performing sequence watermark updates or deletions.
+
+---
+
+## 🪵 Structured Logging & Error Handling
+
+- **Logging:** Use the Go standard library `log/slog` structured logger in JSON format across all backend packages.
+- **Error Wrapping:** Always wrap errors with context using `fmt.Errorf("...: %w", err)` to preserve causal chains and error unwrapping.
+
+---
+
+## 🗺️ Living Product Roadmap (`ROADMAP.md`)
+
+- **Adding Items:** Whenever you or the user identify a capability, optimization, or edge-case improvement for future work, add it to `ROADMAP.md` under the appropriate category.
+- **Deduplication with GitHub Issues:** If an active GitHub Issue already exists or is explicitly created for a feature, bug fix, or task, do not duplicate it in `ROADMAP.md`. GitHub Issues track active, assigned, or triaged tasks, while `ROADMAP.md` captures high-level, unassigned architectural vision and backlog capabilities.
+- **Removing Items:** Once a feature is fully implemented, verified with tests, and committed, remove it from `ROADMAP.md` immediately to keep the roadmap focused on active upcoming tasks.
+
+---
+
+## 🧪 Verification Commands
+
+Always run and verify these commands before committing code changes:
+
+```bash
+# Format code
+make fmt
+
+# Run linters
+make lint
+
+# Run unit and race tests
+make test
+make test-race
+
+# Build executable binary
+make build
+```
+
+---
+
 ## 🧪 Development Workflow
 
 - **Local Infrastructure:** Use `docker-compose up -d --build` to spin up PostgreSQL and MinIO.
 - **Go Hot-Reloading:** The Go server runs inside Docker using `air-verse/air` on port `8006`.
 - **UI Compilation:** Ultimately, the frontend will be built and shipped inside the single Go binary using `embed.FS`.
+
+---
 
 ## 📦 Versioning & Releases (Release Please)
 **CRITICAL RULE:** All commits must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification (e.g., `feat:`, `fix:`, `chore:`, `docs:`).
