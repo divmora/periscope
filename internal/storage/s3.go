@@ -72,7 +72,6 @@ func NewS3Driver(ctx context.Context, cfg S3Config) (*S3Driver, error) {
 		))
 	}
 
-
 	awsCfg, err := config.LoadDefaultConfig(ctx, loadOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to load AWS config: %v", ErrInvalidConfig, err)

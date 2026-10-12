@@ -21,11 +21,11 @@ type TelescopeEntry struct {
 // and dictionary encoding for high cardinality string fields.
 type TelemetryRecord struct {
 	// Core Envelope
-	Sequence             int64     `parquet:"sequence,delta_binary_packed"`
+	Sequence             int64     `parquet:"sequence,delta"`
 	UUID                 string    `parquet:"uuid,zstd"`
 	BatchID              string    `parquet:"batch_id,zstd"`
 	FamilyHash           *string   `parquet:"family_hash,zstd,optional"`
-	ShouldDisplayOnIndex bool      `parquet:"should_display_on_index,boolean"`
+	ShouldDisplayOnIndex bool      `parquet:"should_display_on_index"`
 	Source               string    `parquet:"source,dict,zstd"`
 	Type                 string    `parquet:"type,dict,zstd"`
 	CreatedAt            time.Time `parquet:"created_at,timestamp(microsecond)"`
@@ -49,7 +49,7 @@ type TelemetryRecord struct {
 	QueryConnection *string  `parquet:"query_connection,dict,zstd,optional"`
 	QuerySQL        *string  `parquet:"query_sql,zstd,optional"`
 	QueryTimeMS     *float64 `parquet:"query_time_ms,plain,optional"`
-	QuerySlow       *bool    `parquet:"query_slow,boolean,optional"`
+	QuerySlow       *bool    `parquet:"query_slow,optional"`
 	QueryFile       *string  `parquet:"query_file,zstd,optional"`
 	QueryLine       *int32   `parquet:"query_line,plain,optional"`
 
