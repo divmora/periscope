@@ -1,5 +1,5 @@
 # Stage 1: Build Frontend Assets
-FROM node:24-alpine AS ui-builder
+FROM node:26-alpine AS ui-builder
 WORKDIR /app/ui
 RUN corepack enable
 COPY ui/package.json ui/pnpm-lock.yaml ./
