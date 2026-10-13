@@ -107,11 +107,9 @@ func QueryDASDirect(ctx context.Context, config map[string]any, filter DASFilter
 		endpoint = os.Getenv("S3_ENDPOINT")
 	}
 
-	// Build optional setup commands for DuckDB S3 extension
-	setupSQL := fmt.Sprintf("SET s3_region='%s';", region)
-	if endpoint != "" {
-		setupSQL += fmt.Sprintf(" SET s3_endpoint='%s'; SET s3_use_ssl=false; SET s3_url_style='path';", endpoint)
-	}
+	// Build setup commands for DuckDB S3 extension with resolved AWS credentials (profile, keys, or assumed role)
+	awsCfg, _ := LoadAWSConfig(ctx, region, config)
+	setupSQL := ResolveDuckDBS3Credentials(ctx, awsCfg, endpoint)
 
 	result, err := engine.ExecuteQuery(ctx, setupSQL+" "+querySQL)
 	if err != nil || result == nil || len(result.Rows) == 0 {
@@ -289,7 +287,11 @@ func GetDASStatsDirect(ctx context.Context, config map[string]any) (*DASStats, e
 					COALESCE(AVG(execution_time_ms), 0.0) AS avg_duration_ms
 				FROM read_parquet('%s', hive_partitioning = true);
 			`, s3Path)
-			res, err := engine.ExecuteQuery(ctx, statsSQL)
+			region, _ := config["s3_region"].(string)
+			endpoint, _ := config["s3_endpoint"].(string)
+			awsCfg, _ := LoadAWSConfig(ctx, region, config)
+			setupSQL := ResolveDuckDBS3Credentials(ctx, awsCfg, endpoint)
+			res, err := engine.ExecuteQuery(ctx, setupSQL+" "+statsSQL)
 			if err == nil && res != nil && len(res.Rows) > 0 {
 				row := res.Rows[0]
 				var totalQueries, totalErrors int64

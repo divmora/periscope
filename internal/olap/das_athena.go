@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/athena"
 	athenaTypes "github.com/aws/aws-sdk-go-v2/service/athena/types"
 )
@@ -101,7 +100,7 @@ func QueryDASAthena(ctx context.Context, cfgMap map[string]any, filter DASFilter
 	`, database, table, whereSQL, limit, offset)
 
 	// Attempt live execution against AWS Athena
-	records, err := executeAthenaLive(ctx, region, workgroup, database, outputLocation, sqlQuery)
+	records, err := executeAthenaLive(ctx, region, workgroup, database, outputLocation, sqlQuery, cfgMap)
 	if err != nil || len(records) == 0 {
 		// Gracefully fallback to simulated records in local dev / sandbox environments
 		mock := generateMockDASRecords(filter)
@@ -111,8 +110,8 @@ func QueryDASAthena(ctx context.Context, cfgMap map[string]any, filter DASFilter
 	return records, len(records), nil
 }
 
-func executeAthenaLive(ctx context.Context, region, workgroup, database, outputLocation, sqlQuery string) ([]DASRecord, error) {
-	awsCfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
+func executeAthenaLive(ctx context.Context, region, workgroup, database, outputLocation, sqlQuery string, cfgMap map[string]any) ([]DASRecord, error) {
+	awsCfg, err := LoadAWSConfig(ctx, region, cfgMap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load AWS config for Athena: %w", err)
 	}

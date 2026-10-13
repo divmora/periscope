@@ -37,6 +37,15 @@ export default function SourcesPage() {
   const [athenaWorkgroup, setAthenaWorkgroup] = useState("primary");
   const [athenaOutput, setAthenaOutput] = useState("");
 
+  // AWS Authentication State
+  const [awsAuthMode, setAwsAuthMode] = useState<"default" | "profile" | "keys" | "role">("default");
+  const [awsProfile, setAwsProfile] = useState("");
+  const [awsAccessKeyId, setAwsAccessKeyId] = useState("");
+  const [awsSecretAccessKey, setAwsSecretAccessKey] = useState("");
+  const [awsSessionToken, setAwsSessionToken] = useState("");
+  const [awsRoleArn, setAwsRoleArn] = useState("");
+  const [awsExternalId, setAwsExternalId] = useState("");
+
   const { data, isLoading } = useQuery({
     queryKey: ['project_sources', projectId],
     queryFn: () => SourcesAPI.listSources(projectId as string),
@@ -50,6 +59,18 @@ export default function SourcesPage() {
       const config: Record<string, any> = {};
       if (sourceType === "aurora_das") {
         config.engine = dasEngine;
+        config.aws_auth_mode = awsAuthMode;
+        if (awsAuthMode === "profile") {
+          config.aws_profile = awsProfile;
+        } else if (awsAuthMode === "keys") {
+          config.aws_access_key_id = awsAccessKeyId;
+          config.aws_secret_access_key = awsSecretAccessKey;
+          if (awsSessionToken) config.aws_session_token = awsSessionToken;
+        } else if (awsAuthMode === "role") {
+          config.aws_role_arn = awsRoleArn;
+          if (awsExternalId) config.aws_external_id = awsExternalId;
+        }
+
         if (dasEngine === "direct") {
           config.s3_bucket = s3Bucket;
           config.s3_prefix = s3Prefix;
@@ -59,6 +80,7 @@ export default function SourcesPage() {
           config.athena_table = athenaTable;
           config.athena_workgroup = athenaWorkgroup;
           config.athena_output_location = athenaOutput;
+          config.aws_region = s3Region;
         }
       }
       return SourcesAPI.createSource(projectId as string, {
@@ -77,6 +99,13 @@ export default function SourcesPage() {
       setS3Bucket("");
       setAthenaDatabase("");
       setAthenaOutput("");
+      setAwsAuthMode("default");
+      setAwsProfile("");
+      setAwsAccessKeyId("");
+      setAwsSecretAccessKey("");
+      setAwsSessionToken("");
+      setAwsRoleArn("");
+      setAwsExternalId("");
     },
   });
 
@@ -298,6 +327,150 @@ export default function SourcesPage() {
                       </div>
                     </div>
                   )}
+
+                  {/* AWS Authentication Method Selector */}
+                  <div className="space-y-3 pt-3 border-t border-border/60">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        AWS Authentication
+                      </Label>
+                      <span className="text-[11px] text-muted-foreground font-medium">
+                        {awsAuthMode === "default" && "Host / IRSA Default"}
+                        {awsAuthMode === "profile" && "Named Profile (~/.aws)"}
+                        {awsAuthMode === "keys" && "Static Key Pair"}
+                        {awsAuthMode === "role" && "STS AssumeRole"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-1.5 p-1 bg-muted/40 rounded-lg border border-border">
+                      <button
+                        type="button"
+                        onClick={() => setAwsAuthMode("default")}
+                        className={`px-2 py-1.5 rounded text-xs font-medium transition-all ${
+                          awsAuthMode === "default"
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Default
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAwsAuthMode("profile")}
+                        className={`px-2 py-1.5 rounded text-xs font-medium transition-all ${
+                          awsAuthMode === "profile"
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Profile
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAwsAuthMode("keys")}
+                        className={`px-2 py-1.5 rounded text-xs font-medium transition-all ${
+                          awsAuthMode === "keys"
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Keys
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAwsAuthMode("role")}
+                        className={`px-2 py-1.5 rounded text-xs font-medium transition-all ${
+                          awsAuthMode === "role"
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        IAM Role
+                      </button>
+                    </div>
+
+                    {awsAuthMode === "default" && (
+                      <p className="text-xs text-muted-foreground bg-muted/20 p-2.5 rounded border border-border/40 leading-relaxed">
+                        Uses standard AWS credential chain (EKS IRSA, ECS Task Role, EC2 IMDSv2, or container environment variables).
+                      </p>
+                    )}
+
+                    {awsAuthMode === "profile" && (
+                      <div className="space-y-1.5 p-3 rounded-lg bg-muted/20 border border-border/60">
+                        <Label htmlFor="aws-profile" className="text-xs">Named AWS Profile</Label>
+                        <Input
+                          id="aws-profile"
+                          placeholder="e.g. default, staging, or production-audit"
+                          value={awsProfile}
+                          onChange={(e) => setAwsProfile(e.target.value)}
+                          required
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          Loaded from standard ~/.aws/credentials or ~/.aws/config on the host.
+                        </p>
+                      </div>
+                    )}
+
+                    {awsAuthMode === "keys" && (
+                      <div className="space-y-2.5 p-3 rounded-lg bg-muted/20 border border-border/60">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="aws-key" className="text-xs">AWS Access Key ID</Label>
+                          <Input
+                            id="aws-key"
+                            placeholder="AKIA..."
+                            value={awsAccessKeyId}
+                            onChange={(e) => setAwsAccessKeyId(e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="aws-secret" className="text-xs">AWS Secret Access Key</Label>
+                          <Input
+                            id="aws-secret"
+                            type="password"
+                            placeholder="Secret access key"
+                            value={awsSecretAccessKey}
+                            onChange={(e) => setAwsSecretAccessKey(e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="aws-token" className="text-xs">Session Token (Optional)</Label>
+                          <Input
+                            id="aws-token"
+                            type="password"
+                            placeholder="Temporary STS token (optional)"
+                            value={awsSessionToken}
+                            onChange={(e) => setAwsSessionToken(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {awsAuthMode === "role" && (
+                      <div className="space-y-2.5 p-3 rounded-lg bg-muted/20 border border-border/60">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="aws-role" className="text-xs">IAM Role ARN to Assume</Label>
+                          <Input
+                            id="aws-role"
+                            placeholder="arn:aws:iam::123456789012:role/DasAuditReader"
+                            value={awsRoleArn}
+                            onChange={(e) => setAwsRoleArn(e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="aws-ext-id" className="text-xs">External ID (Optional)</Label>
+                          <Input
+                            id="aws-ext-id"
+                            placeholder="STS External ID for cross-account security"
+                            value={awsExternalId}
+                            onChange={(e) => setAwsExternalId(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (
                 sourceType !== "opentelemetry" && (
