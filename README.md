@@ -127,7 +127,7 @@ When deploying Periscope with AWS S3, grant the following least-privilege IAM po
 - **Go 1.25+**
 - **Docker & Docker Compose**
 - **Make**
-- **Node.js 24+ & pnpm** (for UI development)
+- **Node.js 26+ & pnpm** (for UI development)
 
 ### Common Make Commands
 

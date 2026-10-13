@@ -1,9 +1,9 @@
-FROM node:24-alpine
+FROM node:26-alpine
 
 WORKDIR /app
 
 # Enable pnpm
-RUN corepack enable
+RUN npm install -g pnpm
 
 # Install dependencies first for layer caching
 COPY package.json pnpm-lock.yaml ./
