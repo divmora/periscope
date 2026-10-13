@@ -70,6 +70,7 @@ export default function LoginPage() {
                 <Input
                   id="username"
                   type="text"
+                  autoComplete="username"
                   value={username}
                   onChange={(e: any) => setUsername(e.target.value)}
                   placeholder="admin@example.com"
@@ -86,6 +87,7 @@ export default function LoginPage() {
                 <Input
                   id="password"
                   type="password"
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e: any) => setPassword(e.target.value)}
                   placeholder="••••••••"
@@ -124,9 +126,26 @@ export default function LoginPage() {
             <Telescope className="h-12 w-12 text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]" />
           </div>
           <h2 className="text-3xl font-bold text-white mb-4 tracking-tight">Enterprise Telemetry Lakehouse</h2>
-          <p className="text-lg text-zinc-400 max-w-md">
-            Parquet-backed, DuckDB-powered cold storage for Laravel. Observe your systems at massive scale without database bloat.
+          <p className="text-base text-zinc-400 max-w-lg mb-8 leading-relaxed">
+            High-performance, Parquet-backed cold storage &amp; DuckDB analytical engine for application telemetry, distributed traces, database activity streams, and system audit logs.
           </p>
+          <div className="flex flex-wrap items-center justify-center gap-2 max-w-md">
+            <span className="px-3 py-1 rounded-full text-xs font-medium bg-white/5 border border-white/10 text-zinc-300">
+              Laravel Telescope
+            </span>
+            <span className="px-3 py-1 rounded-full text-xs font-medium bg-white/5 border border-white/10 text-zinc-300">
+              AWS Aurora DAS
+            </span>
+            <span className="px-3 py-1 rounded-full text-xs font-medium bg-white/5 border border-white/10 text-zinc-300">
+              PostgreSQL Audit
+            </span>
+            <span className="px-3 py-1 rounded-full text-xs font-medium bg-white/5 border border-white/10 text-zinc-300">
+              DuckDB OLAP
+            </span>
+            <span className="px-3 py-1 rounded-full text-xs font-medium bg-white/5 border border-white/10 text-zinc-300">
+              OpenTelemetry Ready
+            </span>
+          </div>
         </div>
 
         {/* Subtle Grid Pattern overlay */}

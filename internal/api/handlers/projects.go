@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"os"
 
 	"github.com/divmora/periscope/internal/api"
 	"github.com/divmora/periscope/internal/auth"
@@ -47,6 +48,27 @@ func GetProjectConfig(w http.ResponseWriter, r *http.Request) {
 	api.RespondJSON(w, http.StatusOK, project, nil)
 }
 
+// GetSystemStorage returns global default storage configuration
+func GetSystemStorage(w http.ResponseWriter, r *http.Request) {
+	defaultBucket := os.Getenv("S3_BUCKET")
+	if defaultBucket == "" {
+		defaultBucket = "periscope-telemetry"
+	}
+	defaultEndpoint := os.Getenv("S3_ENDPOINT")
+	defaultRegion := os.Getenv("S3_REGION")
+	if defaultRegion == "" {
+		defaultRegion = "us-east-1"
+	}
+
+	api.RespondJSON(w, http.StatusOK, map[string]any{
+		"storage_type":     "s3",
+		"storage_bucket":   defaultBucket,
+		"storage_endpoint": defaultEndpoint,
+		"storage_region":   defaultRegion,
+		"is_default_ready": true,
+	}, nil)
+}
+
 // CreateProject creates a new project
 func CreateProject(w http.ResponseWriter, r *http.Request) {
 	userID, _ := r.Context().Value(auth.UserIDKey).(int)
@@ -57,13 +79,34 @@ func CreateProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Name == "" || req.SourceDSN == "" || req.StorageBucket == "" {
-		api.RespondError(w, http.StatusBadRequest, "MISSING_FIELDS", "Name, DSN, and Bucket are required", nil)
+	if req.Name == "" {
+		api.RespondError(w, http.StatusBadRequest, "MISSING_FIELDS", "Project Name is required", nil)
 		return
+	}
+
+	// Default Storage Target fallback if not specified by user
+	if req.StorageBucket == "" || req.StorageBucket == "default" {
+		defaultBucket := os.Getenv("S3_BUCKET")
+		if defaultBucket == "" {
+			defaultBucket = "periscope-telemetry"
+		}
+		req.StorageBucket = defaultBucket
+		req.StorageEndpoint = os.Getenv("S3_ENDPOINT")
+		req.StorageRegion = os.Getenv("S3_REGION")
+		if req.StorageRegion == "" {
+			req.StorageRegion = "us-east-1"
+		}
+		req.StorageAccessKey = os.Getenv("S3_ACCESS_KEY_ID")
+		req.StorageSecretKey = os.Getenv("S3_SECRET_ACCESS_KEY")
+		req.StorageType = "s3"
 	}
 
 	if req.StorageType == "" {
 		req.StorageType = "s3"
+	}
+
+	if req.LakehouseRetentionDays <= 0 {
+		req.LakehouseRetentionDays = 365
 	}
 
 	if err := store.CreateProject(r.Context(), userID, &req); err != nil {
@@ -99,7 +142,6 @@ func UpdateProjectConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Merge updates
 	if req.Name != "" {
 		project.Name = req.Name
 	}
@@ -112,17 +154,33 @@ func UpdateProjectConfig(w http.ResponseWriter, r *http.Request) {
 	if req.StorageBucket != "" {
 		project.StorageBucket = req.StorageBucket
 	}
-	project.StorageRegion = req.StorageRegion
-	project.StorageEndpoint = req.StorageEndpoint
-	project.StorageAccessKey = req.StorageAccessKey
-	project.StorageSecretKey = req.StorageSecretKey
+	if req.StorageRegion != "" {
+		project.StorageRegion = req.StorageRegion
+	}
+	if req.StorageEndpoint != "" {
+		project.StorageEndpoint = req.StorageEndpoint
+	}
+	if req.StorageAccessKey != "" {
+		project.StorageAccessKey = req.StorageAccessKey
+	}
+	if req.StorageSecretKey != "" {
+		project.StorageSecretKey = req.StorageSecretKey
+	}
 	project.PruneEnabled = req.PruneEnabled
+	if req.SourceRetentionDays >= 0 {
+		project.SourceRetentionDays = req.SourceRetentionDays
+	}
+	if req.LakehouseRetentionDays > 0 {
+		project.LakehouseRetentionDays = req.LakehouseRetentionDays
+	}
+	project.CompactionEnabled = req.CompactionEnabled
 
 	if err := store.UpdateProject(r.Context(), project); err != nil {
 		api.RespondError(w, http.StatusInternalServerError, "DB_ERROR", "Failed to update project", err.Error())
 		return
 	}
 
+	// Don't leak credentials back in the response
 	project.SourceDSN = ""
 	project.StorageAccessKey = ""
 	project.StorageSecretKey = ""

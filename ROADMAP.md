@@ -105,26 +105,36 @@ periscope/
   - [x] Structured JSON logging and deterministic exit codes for cron runners and external orchestrators.
 
 ### Phase 4: Embedded DuckDB OLAP Engine & Telemetry Query API
-- [ ] Embed DuckDB engine into Go backend (`internal/olap` or `internal/query`) for zero-copy querying of Parquet files.
-- [ ] Support direct SQL queries over Parquet partitions in AWS S3, MinIO, Cloudflare R2, and Local Disk (using DuckDB `httpfs` extension and local file scans).
+- [x] Embed DuckDB engine into Go backend (`internal/olap`) for zero-copy analytical queries over Parquet partitions with standalone CLI runner and analytical fallback engine.
+- [x] Interactive SQL Studio (`ui/src/pages/studio/SQLStudioPage.tsx` and `internal/api/handlers/query_studio.go`) with pre-built schema templates, execution metrics, and CSV export.
+- [ ] Support direct S3/MinIO SQL queries over Parquet partitions using DuckDB `httpfs` extension with automatic AWS credentials injection from storage configuration.
 - [ ] Replace mock handlers in `internal/api/handlers/` (`requests.go`, `exceptions.go`, `queries.go`, `logs.go`) with live DuckDB query execution.
 - [ ] Implement robust query filtering (date/time ranges, status codes, methods, duration thresholds, tags, full-text search) and pagination.
 - [ ] Connect dashboard charts and metrics aggregations (throughput, error rates, latency percentiles) to DuckDB queries.
 
 ### Phase 5: Multi-Source Database Log & Audit Ingestion
-- [ ] **Extensible Collector Ingestion Framework**:
-  - [ ] Define generic `LogSource` and `LogRecord` interfaces in `internal/collector/` to support diverse database log sources beyond Laravel Telescope.
-  - [ ] Schema mapping configuration per project (timestamp column, sequence/watermark identifier, payload format, type classification).
+- [x] **Multi-Source Project Schema & Ingestion Registry**:
+  - [x] Decouple project metadata from a single source DSN (`internal/store/migrations/002_multisource_and_retention.sql`).
+  - [x] Create `project_sources` table and typed CRUD APIs (`internal/store/sources.go`, `internal/api/handlers/sources.go`, `ui/src/api/sources.ts`).
+  - [x] Build dedicated Ingestion Sources management UI (`ui/src/pages/sources/SourcesPage.tsx`) supporting Laravel Telescope, AWS Aurora DAS, PostgreSQL Audit, and OpenTelemetry.
+- [x] **Advanced Data Retention & Lifecycle Tiering**:
+  - [x] Configurable source pruning retention days, lakehouse retention days, and Parquet compaction toggles per project.
+  - [x] Cluster default storage target inheritance (`/api/system/storage`) eliminating repetitive credential entry.
 - [ ] **AWS Aurora Database Activity Streams (DAS)**:
-  - [ ] Aurora DAS Stream consumer (AWS Kinesis / CloudWatch / S3 activity stream format).
-  - [ ] AWS KMS decryption of encrypted DAS activity records.
+  - [ ] Aurora DAS Stream consumer daemon (`periscope das:stream`) processing AWS Kinesis / CloudWatch activity streams.
+  - [ ] AWS KMS envelope decryption of encrypted DAS records.
   - [ ] Dimension extraction: DB User, Client IP, Session ID, Database Name, SQL Statement, Error Codes, Execution Time, Client Application Name.
-  - [ ] Partitioning scheme: `projectId={id}/source=aurora_das/year={YYYY}/month={MM}/day={DD}/hour={HH}/`.
+  - [ ] Hive partitioning scheme: `projectId={id}/source=aurora_das/year={YYYY}/month={MM}/day={DD}/hour={HH}/`.
 - [ ] **PostgreSQL Audit Logs (`pgaudit` & Custom Audit Tables)**:
   - [ ] Support `pgaudit` log format draining and custom PostgreSQL audit log tables.
   - [ ] Dimension extraction: Audit Type (READ, WRITE, FUNCTION, ROLE, DDL, MISC), Statement, User, Schema, Relation/Table, Command, Query Duration.
-  - [ ] Incremental sequence/timestamp watermarking and optional pruning.
-  - [ ] Partitioning scheme: `projectId={id}/source=postgres_audit/year={YYYY}/month={MM}/day={DD}/hour={HH}/`.
+  - [ ] Incremental sequence/timestamp watermarking and safe source table pruning.
+  - [ ] Hive partitioning scheme: `projectId={id}/source=postgres_audit/year={YYYY}/month={MM}/day={DD}/hour={HH}/`.
+- [ ] **OpenTelemetry (OTLP) Collector Receiver**:
+  - [ ] Ingest traces and logs directly via OTLP gRPC (`:4317`) and HTTP (`:4318`) endpoints.
+  - [ ] Map OTLP spans and logs into Hive-partitioned Parquet files with zero external dependencies.
+- [ ] **Lakehouse Parquet Compaction Engine**:
+  - [ ] Background compaction daemon (`periscope lakehouse:compact`) combining small batch files into optimized 128MB-512MB columnar files.
 - [ ] **Generic Database Log Table Adapter**:
   - [ ] Configurable table-based drainer for custom MySQL/PostgreSQL log and event tables.
   - [ ] Dynamic JSON dimension extractor and schema evolution handling.
@@ -138,7 +148,8 @@ periscope/
 - [x] Implement React Router DOM with `/:projectId` scoped URLs.
 - [x] Scaffold layout mirroring the FinGrid Dark Theme aesthetic (Sidebar, Topbar).
 - [x] Build robust data table components with pagination using TanStack Table & Query.
-- [x] Build core views (Dashboard, Settings, Requests, Exceptions, Queries, Logs) scoped to the project ID.
+- [x] Build core views (Dashboard, Settings, Requests, Exceptions, Queries, Logs, Sources, SQL Studio) scoped to the project ID.
+- [x] Fix Desktop Sidebar layout overlap and implement explicit ThemeToggle with system auto-detection.
 - [ ] Implement specialized components:
   - [ ] Interactive JSON tree viewer with copy & search.
   - [ ] Formatted SQL query highlighter with copy and execution plan drawer.

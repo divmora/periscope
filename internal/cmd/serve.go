@@ -64,6 +64,9 @@ var serveCmd = &cobra.Command{
 			r.Group(func(r chi.Router) {
 				r.Use(auth.RequireAuth)
 
+				// Global System Settings
+				r.Get("/system/storage", handlers.GetSystemStorage)
+
 				r.Route("/projects", func(r chi.Router) {
 					r.Get("/", handlers.GetProjects)
 					r.Post("/", handlers.CreateProject)
@@ -85,6 +88,18 @@ var serveCmd = &cobra.Command{
 							r.With(auth.RequireProjectAdmin).Delete("/{userIid}", handlers.RemoveProjectMember)
 						})
 
+						// Multi-Source Data Ingestion Sources
+						r.Route("/sources", func(r chi.Router) {
+							r.Get("/", handlers.ListSources)
+							r.With(auth.RequireProjectAdmin).Post("/", handlers.CreateSource)
+							r.With(auth.RequireProjectAdmin).Delete("/{sourceIid}", handlers.DeleteSource)
+						})
+
+						// Embedded DuckDB SQL Studio
+						r.Route("/query", func(r chi.Router) {
+							r.Post("/execute", handlers.ExecuteSQLQuery)
+						})
+
 						// Telescope Telemetry Data
 						r.Route("/telescope", func(r chi.Router) {
 							r.Get("/requests", handlers.GetRequests)
@@ -95,6 +110,7 @@ var serveCmd = &cobra.Command{
 					})
 				})
 			})
+
 		})
 
 		// ---------------------------------------------------------

@@ -9,6 +9,9 @@ export interface Project {
   storage_region: string;
   storage_endpoint: string;
   prune_enabled: boolean;
+  source_retention_days?: number;
+  lakehouse_retention_days?: number;
+  compaction_enabled?: boolean;
   created_at: string;
   updated_at: string;
   // These are only returned from the config endpoint, never the list endpoint
@@ -16,6 +19,7 @@ export interface Project {
   storage_access_key?: string;
   storage_secret_key?: string;
 }
+
 
 export interface ProjectMember {
   user_iid: string;

@@ -21,7 +21,7 @@ services:
       - S3_BUCKET=${S3_BUCKET:-periscope-telemetry}
       - S3_REGION=${S3_REGION:-us-east-1}
       - S3_USE_SSL=false
-      - AES_ENCRYPTION_KEY=${AES_ENCRYPTION_KEY:-super_secret_aes_32_byte_key_ex}
+      - AES_ENCRYPTION_KEY=${AES_ENCRYPTION_KEY:-super_secret_aes_32_byte_key_32b}
       - JWT_SECRET=${JWT_SECRET:-super_secret_jwt_key_example}
     depends_on:
       - postgres

@@ -8,6 +8,8 @@ import RequestsPage from "./pages/requests"
 import ExceptionsPage from "./pages/exceptions"
 import QueriesPage from "./pages/queries"
 import LogsPage from "./pages/logs"
+import SourcesPage from "./pages/sources/SourcesPage"
+import SQLStudioPage from "./pages/studio/SQLStudioPage"
 import ProtectedRoute from "./components/ProtectedRoute"
 
 function App() {
@@ -25,7 +27,9 @@ function App() {
               <Route path="/settings" element={<SettingsPage />} />
 
               <Route path="/:projectId">
-                <Route index element={<Navigate to="telescope/requests" replace />} />
+                <Route index element={<Navigate to="sources" replace />} />
+                <Route path="sources" element={<SourcesPage />} />
+                <Route path="studio" element={<SQLStudioPage />} />
                 <Route path="config" element={<SettingsPage />} />
                 
                 <Route path="telescope/requests" element={<RequestsPage />} />
@@ -40,5 +44,6 @@ function App() {
     </AuthProvider>
   )
 }
+
 
 export default App

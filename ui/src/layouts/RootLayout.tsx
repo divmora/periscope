@@ -28,11 +28,12 @@ import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbS
 import { 
   Telescope, Database, Settings, LogOut, Activity, ArrowUpSquare, 
   Monitor, Clock, Menu, AlignLeft, FileText, Code, Headphones, Bug, Lock, 
-  Globe, Archive, Mail, Layers, Megaphone, Layout, ChevronRight
+  Globe, Archive, Mail, Layers, Megaphone, Layout, ChevronRight, Terminal
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { ROLES } from "../lib/constants";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function RootLayout() {
   const { user, logout } = useAuth();
@@ -51,25 +52,18 @@ export default function RootLayout() {
   };
 
   const projectNavItems = projectId ? [
-    { name: "Requests", href: `/${projectId}/telescope/requests`, icon: ArrowUpSquare, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
+    { name: "Data Sources", href: `/${projectId}/sources`, icon: Layers, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
+    { name: "SQL Studio", href: `/${projectId}/studio`, icon: Terminal, allowedRoles: [ROLES.MEMBER, ROLES.ADMIN] },
+    { name: "Requests & Traces", href: `/${projectId}/telescope/requests`, icon: ArrowUpSquare, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
+    { name: "Queries", href: `/${projectId}/telescope/queries`, icon: AlignLeft, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
+    { name: "Exceptions", href: `/${projectId}/telescope/exceptions`, icon: Bug, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
+    { name: "Logs", href: `/${projectId}/telescope/logs`, icon: Archive, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
     { name: "Commands", href: `/${projectId}/telescope/commands`, icon: Monitor, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
     { name: "Schedule", href: `/${projectId}/telescope/schedule`, icon: Clock, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
     { name: "Jobs", href: `/${projectId}/telescope/jobs`, icon: Menu, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
-    { name: "Batches", href: `/${projectId}/telescope/batches`, icon: AlignLeft, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
-    { name: "Cache", href: `/${projectId}/telescope/cache`, icon: FileText, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
-    { name: "Dumps", href: `/${projectId}/telescope/dumps`, icon: Code, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
-    { name: "Events", href: `/${projectId}/telescope/events`, icon: Headphones, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
-    { name: "Exceptions", href: `/${projectId}/telescope/exceptions`, icon: Bug, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
-    { name: "Gates", href: `/${projectId}/telescope/gates`, icon: Lock, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
-    { name: "HTTP Client", href: `/${projectId}/telescope/http-client`, icon: Globe, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
-    { name: "Logs", href: `/${projectId}/telescope/logs`, icon: Archive, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
-    { name: "Mail", href: `/${projectId}/telescope/mail`, icon: Mail, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
-    { name: "Models", href: `/${projectId}/telescope/models`, icon: Layers, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
-    { name: "Notifications", href: `/${projectId}/telescope/notifications`, icon: Megaphone, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
-    { name: "Queries", href: `/${projectId}/telescope/queries`, icon: AlignLeft, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
-    { name: "Redis", href: `/${projectId}/telescope/redis`, icon: Database, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
-    { name: "Views", href: `/${projectId}/telescope/views`, icon: Layout, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
+    { name: "Project Settings", href: `/${projectId}/config`, icon: Settings, allowedRoles: [ROLES.ADMIN] },
   ] : [];
+
 
   const currentUserRole = user?.global_role || ROLES.VIEWER;
   const visibleNavItems = projectNavItems.filter(item => item.allowedRoles.includes(currentUserRole));
@@ -183,37 +177,42 @@ export default function RootLayout() {
         </SidebarFooter>
       </Sidebar>
 
-      <SidebarInset className="bg-background flex flex-col w-full h-screen overflow-hidden">
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-background px-4">
-          <SidebarTrigger className="-ml-1 text-muted-foreground hover:text-foreground" />
-          <Separator orientation="vertical" className="mx-2 h-4" />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink asChild>
-                  <Link to="/projects">Platform</Link>
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              {projectId ? (
-                <>
-                  <BreadcrumbItem className="hidden md:block">
-                    <BreadcrumbLink asChild>
-                      <Link to={`/${projectId}/telescope/requests`}>Project {projectId.substring(0, 6)}</Link>
-                    </BreadcrumbLink>
-                  </BreadcrumbItem>
-                  <BreadcrumbSeparator className="hidden md:block" />
-                  <BreadcrumbItem>
-                    <BreadcrumbPage className="capitalize">{pathParts[pathParts.length - 1]}</BreadcrumbPage>
-                  </BreadcrumbItem>
-                </>
-              ) : (
-                <BreadcrumbItem>
-                  <BreadcrumbPage className="capitalize">{firstPath || 'Projects'}</BreadcrumbPage>
+      <SidebarInset className="bg-background flex flex-col min-w-0 flex-1 h-screen overflow-hidden">
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-4">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger className="-ml-1 text-muted-foreground hover:text-foreground" />
+            <Separator orientation="vertical" className="mx-2 h-4" />
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem className="hidden md:block">
+                  <BreadcrumbLink asChild>
+                    <Link to="/projects">Platform</Link>
+                  </BreadcrumbLink>
                 </BreadcrumbItem>
-              )}
-            </BreadcrumbList>
-          </Breadcrumb>
+                <BreadcrumbSeparator className="hidden md:block" />
+                {projectId ? (
+                  <>
+                    <BreadcrumbItem className="hidden md:block">
+                      <BreadcrumbLink asChild>
+                        <Link to={`/${projectId}/telescope/requests`}>Project {projectId.substring(0, 6)}</Link>
+                      </BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator className="hidden md:block" />
+                    <BreadcrumbItem>
+                      <BreadcrumbPage className="capitalize">{pathParts[pathParts.length - 1]}</BreadcrumbPage>
+                    </BreadcrumbItem>
+                  </>
+                ) : (
+                  <BreadcrumbItem>
+                    <BreadcrumbPage className="capitalize">{firstPath || 'Projects'}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                )}
+              </BreadcrumbList>
+            </Breadcrumb>
+          </div>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+          </div>
         </header>
         <main className="flex-1 overflow-auto bg-muted/20">
           <Outlet />

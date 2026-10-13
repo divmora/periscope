@@ -10,16 +10,19 @@ import (
 )
 
 type Project struct {
-	ID              int       `json:"-"`   // Internal DB primary key for FK relations & watermarks
-	IID             string    `json:"iid"` // We expose iid as iid to the API
-	Name            string    `json:"name"`
-	StorageType     string    `json:"storage_type"`
-	StorageBucket   string    `json:"storage_bucket"`
-	StorageRegion   string    `json:"storage_region"`
-	StorageEndpoint string    `json:"storage_endpoint"`
-	PruneEnabled    bool      `json:"prune_enabled"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID                     int       `json:"-"`   // Internal DB primary key for FK relations & watermarks
+	IID                    string    `json:"iid"` // We expose iid as iid to the API
+	Name                   string    `json:"name"`
+	StorageType            string    `json:"storage_type"`
+	StorageBucket          string    `json:"storage_bucket"`
+	StorageRegion          string    `json:"storage_region"`
+	StorageEndpoint        string    `json:"storage_endpoint"`
+	PruneEnabled           bool      `json:"prune_enabled"`
+	SourceRetentionDays    int       `json:"source_retention_days"`
+	LakehouseRetentionDays int       `json:"lakehouse_retention_days"`
+	CompactionEnabled      bool      `json:"compaction_enabled"`
+	CreatedAt              time.Time `json:"created_at"`
+	UpdatedAt              time.Time `json:"updated_at"`
 	// These fields are internal and should only be returned when explicitly requesting config
 	SourceDSN        string `json:"source_dsn,omitempty"`
 	StorageAccessKey string `json:"storage_access_key,omitempty"`
@@ -32,13 +35,15 @@ func ListProjects(ctx context.Context, userID int, globalRole string) ([]Project
 
 	if globalRole == "admin" {
 		rows, err = Pool.Query(ctx, `
-			SELECT id, iid, name, storage_type, storage_bucket, storage_region, storage_endpoint, prune_enabled, created_at, updated_at
+			SELECT id, iid, name, storage_type, storage_bucket, storage_region, storage_endpoint, 
+			       prune_enabled, source_retention_days, lakehouse_retention_days, compaction_enabled, created_at, updated_at
 			FROM projects
 			ORDER BY name ASC
 		`)
 	} else {
 		rows, err = Pool.Query(ctx, `
-			SELECT p.id, p.iid, p.name, p.storage_type, p.storage_bucket, p.storage_region, p.storage_endpoint, p.prune_enabled, p.created_at, p.updated_at
+			SELECT p.id, p.iid, p.name, p.storage_type, p.storage_bucket, p.storage_region, p.storage_endpoint, 
+			       p.prune_enabled, p.source_retention_days, p.lakehouse_retention_days, p.compaction_enabled, p.created_at, p.updated_at
 			FROM projects p
 			JOIN project_memberships pm ON p.id = pm.project_id
 			WHERE pm.user_id = $1
@@ -54,7 +59,8 @@ func ListProjects(ctx context.Context, userID int, globalRole string) ([]Project
 	var projects []Project
 	for rows.Next() {
 		var p Project
-		if err := rows.Scan(&p.ID, &p.IID, &p.Name, &p.StorageType, &p.StorageBucket, &p.StorageRegion, &p.StorageEndpoint, &p.PruneEnabled, &p.CreatedAt, &p.UpdatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.IID, &p.Name, &p.StorageType, &p.StorageBucket, &p.StorageRegion, &p.StorageEndpoint,
+			&p.PruneEnabled, &p.SourceRetentionDays, &p.LakehouseRetentionDays, &p.CompactionEnabled, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, err
 		}
 		projects = append(projects, p)
@@ -76,15 +82,16 @@ func CheckProjectAccess(ctx context.Context, userID int, projectIID string) (boo
 
 func GetProject(ctx context.Context, iid string) (*Project, error) {
 	var p Project
-	var encDSN, encAccess, encSecret string
+	var encDSN, encAccess, encSecret *string
 
 	err := Pool.QueryRow(ctx, `
 		SELECT id, iid, name, encrypted_source_dsn, storage_type, storage_bucket, storage_region, storage_endpoint, 
-		       encrypted_storage_access_key, encrypted_storage_secret_key, prune_enabled, created_at, updated_at
+		       encrypted_storage_access_key, encrypted_storage_secret_key, prune_enabled, 
+		       source_retention_days, lakehouse_retention_days, compaction_enabled, created_at, updated_at
 		FROM projects
 		WHERE iid = $1
 	`, iid).Scan(&p.ID, &p.IID, &p.Name, &encDSN, &p.StorageType, &p.StorageBucket, &p.StorageRegion, &p.StorageEndpoint,
-		&encAccess, &encSecret, &p.PruneEnabled, &p.CreatedAt, &p.UpdatedAt)
+		&encAccess, &encSecret, &p.PruneEnabled, &p.SourceRetentionDays, &p.LakehouseRetentionDays, &p.CompactionEnabled, &p.CreatedAt, &p.UpdatedAt)
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -93,10 +100,16 @@ func GetProject(ctx context.Context, iid string) (*Project, error) {
 		return nil, err
 	}
 
-	// Decrypt sensitive fields
-	p.SourceDSN, _ = crypto.Decrypt(encDSN)
-	p.StorageAccessKey, _ = crypto.Decrypt(encAccess)
-	p.StorageSecretKey, _ = crypto.Decrypt(encSecret)
+	// Decrypt sensitive fields if present
+	if encDSN != nil && *encDSN != "" {
+		p.SourceDSN, _ = crypto.Decrypt(*encDSN)
+	}
+	if encAccess != nil && *encAccess != "" {
+		p.StorageAccessKey, _ = crypto.Decrypt(*encAccess)
+	}
+	if encSecret != nil && *encSecret != "" {
+		p.StorageSecretKey, _ = crypto.Decrypt(*encSecret)
+	}
 
 	return &p, nil
 }
@@ -107,12 +120,20 @@ func GetProjectByIID(ctx context.Context, iid string) (*Project, error) {
 }
 
 func CreateProject(ctx context.Context, userID int, p *Project) error {
-	encDSN, err := crypto.Encrypt(p.SourceDSN)
-	if err != nil {
-		return fmt.Errorf("failed to encrypt DSN: %w", err)
+	var encDSN string
+	var err error
+	if p.SourceDSN != "" {
+		encDSN, err = crypto.Encrypt(p.SourceDSN)
+		if err != nil {
+			return fmt.Errorf("failed to encrypt DSN: %w", err)
+		}
 	}
 	encAccess, _ := crypto.Encrypt(p.StorageAccessKey)
 	encSecret, _ := crypto.Encrypt(p.StorageSecretKey)
+
+	if p.LakehouseRetentionDays <= 0 {
+		p.LakehouseRetentionDays = 365
+	}
 
 	tx, err := Pool.Begin(ctx)
 	if err != nil {
@@ -122,14 +143,30 @@ func CreateProject(ctx context.Context, userID int, p *Project) error {
 
 	var projectID int
 	err = tx.QueryRow(ctx, `
-		INSERT INTO projects (name, encrypted_source_dsn, storage_type, storage_bucket, storage_region, storage_endpoint, encrypted_storage_access_key, encrypted_storage_secret_key, prune_enabled)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO projects (
+			name, encrypted_source_dsn, storage_type, storage_bucket, storage_region, storage_endpoint, 
+			encrypted_storage_access_key, encrypted_storage_secret_key, prune_enabled,
+			source_retention_days, lakehouse_retention_days, compaction_enabled
+		)
+		VALUES ($1, NULLIF($2, ''), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING id, iid, created_at, updated_at
-	`, p.Name, encDSN, p.StorageType, p.StorageBucket, p.StorageRegion, p.StorageEndpoint, encAccess, encSecret, p.PruneEnabled).Scan(&projectID, &p.IID, &p.CreatedAt, &p.UpdatedAt)
+	`, p.Name, encDSN, p.StorageType, p.StorageBucket, p.StorageRegion, p.StorageEndpoint, encAccess, encSecret, p.PruneEnabled,
+		p.SourceRetentionDays, p.LakehouseRetentionDays, p.CompactionEnabled).Scan(&projectID, &p.IID, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return err
 	}
 	p.ID = projectID
+
+	// If source DSN was provided, automatically register the primary Laravel Telescope source
+	if p.SourceDSN != "" {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO project_sources (project_id, name, source_type, status, encrypted_dsn, config)
+			VALUES ($1, 'Laravel Telescope (Primary)', 'laravel_telescope', 'active', $2, '{"auto_created": true}'::jsonb)
+		`, projectID, encDSN)
+		if err != nil {
+			return fmt.Errorf("failed to create default project source: %w", err)
+		}
+	}
 
 	if userID > 0 {
 		_, err = tx.Exec(ctx, `
@@ -146,9 +183,13 @@ func CreateProject(ctx context.Context, userID int, p *Project) error {
 }
 
 func UpdateProject(ctx context.Context, p *Project) error {
-	encDSN, err := crypto.Encrypt(p.SourceDSN)
-	if err != nil {
-		return fmt.Errorf("failed to encrypt DSN: %w", err)
+	var encDSN string
+	var err error
+	if p.SourceDSN != "" {
+		encDSN, err = crypto.Encrypt(p.SourceDSN)
+		if err != nil {
+			return fmt.Errorf("failed to encrypt DSN: %w", err)
+		}
 	}
 	encAccess, _ := crypto.Encrypt(p.StorageAccessKey)
 	encSecret, _ := crypto.Encrypt(p.StorageSecretKey)
@@ -156,7 +197,7 @@ func UpdateProject(ctx context.Context, p *Project) error {
 	_, err = Pool.Exec(ctx, `
 		UPDATE projects SET 
 			name = $1, 
-			encrypted_source_dsn = $2, 
+			encrypted_source_dsn = NULLIF($2, ''), 
 			storage_type = $3, 
 			storage_bucket = $4, 
 			storage_region = $5, 
@@ -164,9 +205,13 @@ func UpdateProject(ctx context.Context, p *Project) error {
 			encrypted_storage_access_key = $7, 
 			encrypted_storage_secret_key = $8, 
 			prune_enabled = $9,
+			source_retention_days = $10,
+			lakehouse_retention_days = $11,
+			compaction_enabled = $12,
 			updated_at = CURRENT_TIMESTAMP
-		WHERE iid = $10
-	`, p.Name, encDSN, p.StorageType, p.StorageBucket, p.StorageRegion, p.StorageEndpoint, encAccess, encSecret, p.PruneEnabled, p.IID)
+		WHERE iid = $13
+	`, p.Name, encDSN, p.StorageType, p.StorageBucket, p.StorageRegion, p.StorageEndpoint, encAccess, encSecret, p.PruneEnabled,
+		p.SourceRetentionDays, p.LakehouseRetentionDays, p.CompactionEnabled, p.IID)
 
 	return err
 }
