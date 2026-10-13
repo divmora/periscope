@@ -3,9 +3,9 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { DASAPI, DASRecord } from "../../api/das";
 import { 
-  Shield, Database, Search, Filter, RefreshCw, Clock, 
-  Terminal, AlertTriangle, CheckCircle2, Copy, Check, 
-  ExternalLink, Layers, Cpu, Flame, Server
+  Shield, Database, Search, RefreshCw, Clock, 
+  Terminal, AlertTriangle, Copy, Check, 
+  Cpu, Flame, Server
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";

@@ -13,6 +13,9 @@ import {
   SidebarFooter, 
   SidebarGroupLabel, 
   SidebarGroupContent,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
 import { 
   DropdownMenu, 
@@ -26,14 +29,21 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbPage } from "@/components/ui/breadcrumb";
 import { 
-  Telescope, Database, Settings, LogOut, Activity, ArrowUpSquare, 
-  Monitor, Clock, Menu, AlignLeft, FileText, Code, Headphones, Bug, Lock, 
-  Globe, Archive, Mail, Layers, Megaphone, Layout, ChevronRight, Terminal, Shield
+  Telescope, Database, Settings, LogOut, ArrowUpSquare, 
+  Monitor, Clock, Menu, AlignLeft, Bug, 
+  Archive, Layers, ChevronRight, Terminal, Shield
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { ROLES } from "../lib/constants";
+import { ROLES, type Role } from "../lib/constants";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ThemeToggle } from "@/components/ThemeToggle";
+
+interface NavItem {
+  name: string;
+  href: string;
+  icon: any;
+  allowedRoles: Role[];
+}
 
 export default function RootLayout() {
   const { user, logout } = useAuth();
@@ -51,10 +61,13 @@ export default function RootLayout() {
     navigate('/login');
   };
 
-  const projectNavItems = projectId ? [
+  const primaryNavItems: NavItem[] = projectId ? [
     { name: "Data Sources", href: `/${projectId}/sources`, icon: Layers, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
     { name: "SQL Studio", href: `/${projectId}/studio`, icon: Terminal, allowedRoles: [ROLES.MEMBER, ROLES.ADMIN] },
     { name: "Aurora DAS Audit", href: `/${projectId}/das`, icon: Shield, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
+  ] : [];
+
+  const telescopeNavItems: NavItem[] = projectId ? [
     { name: "Requests & Traces", href: `/${projectId}/telescope/requests`, icon: ArrowUpSquare, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
     { name: "Queries", href: `/${projectId}/telescope/queries`, icon: AlignLeft, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
     { name: "Exceptions", href: `/${projectId}/telescope/exceptions`, icon: Bug, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
@@ -62,12 +75,16 @@ export default function RootLayout() {
     { name: "Commands", href: `/${projectId}/telescope/commands`, icon: Monitor, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
     { name: "Schedule", href: `/${projectId}/telescope/schedule`, icon: Clock, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
     { name: "Jobs", href: `/${projectId}/telescope/jobs`, icon: Menu, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
+  ] : [];
+
+  const adminNavItems: NavItem[] = projectId ? [
     { name: "Project Settings", href: `/${projectId}/config`, icon: Settings, allowedRoles: [ROLES.ADMIN] },
   ] : [];
 
-
   const currentUserRole = user?.global_role || ROLES.VIEWER;
-  const visibleNavItems = projectNavItems.filter(item => item.allowedRoles.includes(currentUserRole));
+  const visiblePrimaryItems = primaryNavItems.filter(item => item.allowedRoles.includes(currentUserRole));
+  const visibleTelescopeItems = telescopeNavItems.filter(item => item.allowedRoles.includes(currentUserRole));
+  const visibleAdminItems = adminNavItems.filter(item => item.allowedRoles.includes(currentUserRole));
 
   return (
     <SidebarProvider>
@@ -125,7 +142,59 @@ export default function RootLayout() {
                 <CollapsibleContent>
                   <SidebarGroupContent>
                     <SidebarMenu>
-                      {visibleNavItems.map((item) => {
+                      {visiblePrimaryItems.map((item) => {
+                        const isActive = location.pathname.startsWith(item.href);
+                        return (
+                          <SidebarMenuItem key={item.name}>
+                            <SidebarMenuButton asChild isActive={isActive} tooltip={item.name}>
+                              <Link to={item.href}>
+                                <item.icon className="h-4 w-4" />
+                                <span>{item.name}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        );
+                      })}
+
+                      {/* Telescope Submenu */}
+                      {visibleTelescopeItems.length > 0 && (
+                        <Collapsible defaultOpen className="group/telescope">
+                          <SidebarMenuItem>
+                            <CollapsibleTrigger asChild>
+                              <SidebarMenuButton 
+                                tooltip="Laravel Telescope"
+                                isActive={location.pathname.includes('/telescope')}
+                                className="w-full justify-between"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <Telescope className="h-4 w-4 text-primary" />
+                                  <span>Laravel Telescope</span>
+                                </div>
+                                <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]/telescope:rotate-90 text-muted-foreground" />
+                              </SidebarMenuButton>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <SidebarMenuSub>
+                                {visibleTelescopeItems.map((item) => {
+                                  const isActive = location.pathname.startsWith(item.href);
+                                  return (
+                                    <SidebarMenuSubItem key={item.name}>
+                                      <SidebarMenuSubButton asChild isActive={isActive} size="sm">
+                                        <Link to={item.href}>
+                                          <item.icon className="h-3.5 w-3.5" />
+                                          <span>{item.name}</span>
+                                        </Link>
+                                      </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                  );
+                                })}
+                              </SidebarMenuSub>
+                            </CollapsibleContent>
+                          </SidebarMenuItem>
+                        </Collapsible>
+                      )}
+
+                      {visibleAdminItems.map((item) => {
                         const isActive = location.pathname.startsWith(item.href);
                         return (
                           <SidebarMenuItem key={item.name}>
