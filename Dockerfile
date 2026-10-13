@@ -17,7 +17,7 @@ COPY --from=ui-builder /app/ui/dist ./ui/dist
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /bin/periscope ./cmd/periscope
 
 # Stage 3: Minimal Runtime
-FROM alpine:3.22
+FROM alpine:3.23
 RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /app
 COPY --from=go-builder /bin/periscope /usr/local/bin/periscope
