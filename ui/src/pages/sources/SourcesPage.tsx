@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SourcesAPI, ProjectSource } from "../../api/sources";
 import { 
-  Layers, Plus, Trash2, ShieldCheck, Activity, Database, 
+  Layers, Plus, Trash2, ShieldCheck, Database, 
   Radio, CheckCircle2, Clock, Loader2, Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,14 @@ export default function SourcesPage() {
   const [name, setName] = useState("");
   const [sourceType, setSourceType] = useState<ProjectSource["source_type"]>("laravel_telescope");
   const [dsn, setDsn] = useState("");
+  const [dasEngine, setDasEngine] = useState<"direct" | "athena">("direct");
+  const [s3Bucket, setS3Bucket] = useState("");
+  const [s3Prefix, setS3Prefix] = useState("aurora_das/");
+  const [s3Region, setS3Region] = useState("us-east-1");
+  const [athenaDatabase, setAthenaDatabase] = useState("");
+  const [athenaTable, setAthenaTable] = useState("activity_stream");
+  const [athenaWorkgroup, setAthenaWorkgroup] = useState("primary");
+  const [athenaOutput, setAthenaOutput] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ['project_sources', projectId],
@@ -38,18 +46,37 @@ export default function SourcesPage() {
   const sources = data?.data || [];
 
   const createMutation = useMutation({
-    mutationFn: () => SourcesAPI.createSource(projectId as string, {
-      name,
-      source_type: sourceType,
-      dsn,
-      status: "active",
-      config: {},
-    }),
+    mutationFn: () => {
+      const config: Record<string, any> = {};
+      if (sourceType === "aurora_das") {
+        config.engine = dasEngine;
+        if (dasEngine === "direct") {
+          config.s3_bucket = s3Bucket;
+          config.s3_prefix = s3Prefix;
+          config.s3_region = s3Region;
+        } else {
+          config.athena_database = athenaDatabase;
+          config.athena_table = athenaTable;
+          config.athena_workgroup = athenaWorkgroup;
+          config.athena_output_location = athenaOutput;
+        }
+      }
+      return SourcesAPI.createSource(projectId as string, {
+        name,
+        source_type: sourceType,
+        dsn: sourceType === "aurora_das" ? (dasEngine === "direct" ? `s3://${s3Bucket}/${s3Prefix}` : `athena://${athenaDatabase}/${athenaTable}`) : dsn,
+        status: "active",
+        config,
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project_sources', projectId] });
       setOpen(false);
       setName("");
       setDsn("");
+      setS3Bucket("");
+      setAthenaDatabase("");
+      setAthenaOutput("");
     },
   });
 
@@ -99,7 +126,7 @@ export default function SourcesPage() {
               Add Ingestion Source
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md bg-card border-border">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-card border-border">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Layers className="h-5 w-5 text-primary" />
@@ -144,22 +171,152 @@ export default function SourcesPage() {
                 </select>
               </div>
 
-              {sourceType !== "opentelemetry" && (
-                <div className="space-y-2">
-                  <Label htmlFor="source-dsn">Connection String / DSN</Label>
-                  <Input
-                    id="source-dsn"
-                    type="password"
-                    placeholder="postgres://user:pass@host:5432/db"
-                    value={dsn}
-                    onChange={(e) => setDsn(e.target.value)}
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
-                    Encrypted with AES-GCM before saving to metadata catalog.
-                  </p>
+              {sourceType === "aurora_das" ? (
+                <div className="space-y-4 pt-2 border-t border-border/60">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">DAS Query Engine</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setDasEngine("direct")}
+                        className={`p-3 rounded-lg border text-left transition-all flex flex-col justify-between ${
+                          dasEngine === "direct"
+                            ? "border-primary bg-primary/10 text-foreground"
+                            : "border-border bg-card hover:bg-muted/30 text-muted-foreground"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-semibold text-xs flex items-center gap-1.5">
+                            <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                            Direct S3
+                          </span>
+                          {dasEngine === "direct" && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
+                        </div>
+                        <span className="text-[11px] text-muted-foreground leading-tight">
+                          Embedded DuckDB reading Hive Parquet. Zero query cost.
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setDasEngine("athena")}
+                        className={`p-3 rounded-lg border text-left transition-all flex flex-col justify-between ${
+                          dasEngine === "athena"
+                            ? "border-primary bg-primary/10 text-foreground"
+                            : "border-border bg-card hover:bg-muted/30 text-muted-foreground"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-semibold text-xs flex items-center gap-1.5">
+                            <Radio className="h-3.5 w-3.5 text-sky-400" />
+                            AWS Athena
+                          </span>
+                          {dasEngine === "athena" && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
+                        </div>
+                        <span className="text-[11px] text-muted-foreground leading-tight">
+                          Serverless query engine for petabyte-scale history.
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {dasEngine === "direct" ? (
+                    <div className="space-y-3 p-3 rounded-lg bg-muted/20 border border-border/60">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="s3-bucket" className="text-xs">S3 Bucket Name</Label>
+                        <Input
+                          id="s3-bucket"
+                          placeholder="e.g. my-company-aurora-das-parquet"
+                          value={s3Bucket}
+                          onChange={(e) => setS3Bucket(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="s3-prefix" className="text-xs">S3 Prefix</Label>
+                          <Input
+                            id="s3-prefix"
+                            placeholder="aurora_das/"
+                            value={s3Prefix}
+                            onChange={(e) => setS3Prefix(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="s3-region" className="text-xs">AWS Region</Label>
+                          <Input
+                            id="s3-region"
+                            placeholder="us-east-1"
+                            value={s3Region}
+                            onChange={(e) => setS3Region(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 p-3 rounded-lg bg-muted/20 border border-border/60">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="athena-db" className="text-xs">Glue Database</Label>
+                          <Input
+                            id="athena-db"
+                            placeholder="e.g. audit_db"
+                            value={athenaDatabase}
+                            onChange={(e) => setAthenaDatabase(e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="athena-tbl" className="text-xs">Glue Table</Label>
+                          <Input
+                            id="athena-tbl"
+                            placeholder="e.g. aurora_das_logs"
+                            value={athenaTable}
+                            onChange={(e) => setAthenaTable(e.target.value)}
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="athena-wg" className="text-xs">Athena Workgroup</Label>
+                        <Input
+                          id="athena-wg"
+                          placeholder="primary"
+                          value={athenaWorkgroup}
+                          onChange={(e) => setAthenaWorkgroup(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="athena-out" className="text-xs">Query Result S3 Location</Label>
+                        <Input
+                          id="athena-out"
+                          placeholder="s3://my-athena-results-bucket/queries/"
+                          value={athenaOutput}
+                          onChange={(e) => setAthenaOutput(e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
+              ) : (
+                sourceType !== "opentelemetry" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="source-dsn">Connection String / DSN</Label>
+                    <Input
+                      id="source-dsn"
+                      type="password"
+                      placeholder="postgres://user:pass@host:5432/db"
+                      value={dsn}
+                      onChange={(e) => setDsn(e.target.value)}
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+                      Encrypted with AES-GCM before saving to metadata catalog.
+                    </p>
+                  </div>
+                )
               )}
 
               <DialogFooter className="pt-2">

@@ -100,6 +100,12 @@ var serveCmd = &cobra.Command{
 							r.Post("/execute", handlers.ExecuteSQLQuery)
 						})
 
+						// AWS Aurora Database Activity Streams (Direct S3 / Athena)
+						r.Route("/das", func(r chi.Router) {
+							r.Get("/activity", handlers.GetDASActivity)
+							r.Get("/stats", handlers.GetDASStats)
+						})
+
 						// Telescope Telemetry Data
 						r.Route("/telescope", func(r chi.Router) {
 							r.Get("/requests", handlers.GetRequests)

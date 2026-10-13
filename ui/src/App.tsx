@@ -10,6 +10,7 @@ import QueriesPage from "./pages/queries"
 import LogsPage from "./pages/logs"
 import SourcesPage from "./pages/sources/SourcesPage"
 import SQLStudioPage from "./pages/studio/SQLStudioPage"
+import DASPage from "./pages/das"
 import ProtectedRoute from "./components/ProtectedRoute"
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
                 <Route index element={<Navigate to="sources" replace />} />
                 <Route path="sources" element={<SourcesPage />} />
                 <Route path="studio" element={<SQLStudioPage />} />
+                <Route path="das" element={<DASPage />} />
                 <Route path="config" element={<SettingsPage />} />
                 
                 <Route path="telescope/requests" element={<RequestsPage />} />

@@ -28,7 +28,7 @@ import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbS
 import { 
   Telescope, Database, Settings, LogOut, Activity, ArrowUpSquare, 
   Monitor, Clock, Menu, AlignLeft, FileText, Code, Headphones, Bug, Lock, 
-  Globe, Archive, Mail, Layers, Megaphone, Layout, ChevronRight, Terminal
+  Globe, Archive, Mail, Layers, Megaphone, Layout, ChevronRight, Terminal, Shield
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { ROLES } from "../lib/constants";
@@ -54,6 +54,7 @@ export default function RootLayout() {
   const projectNavItems = projectId ? [
     { name: "Data Sources", href: `/${projectId}/sources`, icon: Layers, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
     { name: "SQL Studio", href: `/${projectId}/studio`, icon: Terminal, allowedRoles: [ROLES.MEMBER, ROLES.ADMIN] },
+    { name: "Aurora DAS Audit", href: `/${projectId}/das`, icon: Shield, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
     { name: "Requests & Traces", href: `/${projectId}/telescope/requests`, icon: ArrowUpSquare, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
     { name: "Queries", href: `/${projectId}/telescope/queries`, icon: AlignLeft, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },
     { name: "Exceptions", href: `/${projectId}/telescope/exceptions`, icon: Bug, allowedRoles: [ROLES.VIEWER, ROLES.MEMBER, ROLES.ADMIN] },

@@ -121,9 +121,11 @@ periscope/
   - [x] Configurable source pruning retention days, lakehouse retention days, and Parquet compaction toggles per project.
   - [x] Cluster default storage target inheritance (`/api/system/storage`) eliminating repetitive credential entry.
 - [ ] **AWS Aurora Database Activity Streams (DAS)**:
-  - [ ] Aurora DAS Stream consumer daemon (`periscope das:stream`) processing AWS Kinesis / CloudWatch activity streams.
+  - [x] Dual analytical engine support: Direct S3 Parquet query execution via embedded DuckDB and Amazon Athena via AWS SDK v2.
+  - [x] Dimension extraction: DB User, Client IP, Database Name, SQL Statement, Error Codes, Execution Time, Client Application Name, and Status.
+  - [x] Ingestion Source management with Direct S3 and Athena catalog configurations (`ui/src/pages/sources/SourcesPage.tsx`).
+  - [ ] Aurora DAS Stream consumer daemon (`periscope das:stream`) processing raw AWS Kinesis / CloudWatch activity streams.
   - [ ] AWS KMS envelope decryption of encrypted DAS records.
-  - [ ] Dimension extraction: DB User, Client IP, Session ID, Database Name, SQL Statement, Error Codes, Execution Time, Client Application Name.
   - [ ] Hive partitioning scheme: `projectId={id}/source=aurora_das/year={YYYY}/month={MM}/day={DD}/hour={HH}/`.
 - [ ] **PostgreSQL Audit Logs (`pgaudit` & Custom Audit Tables)**:
   - [ ] Support `pgaudit` log format draining and custom PostgreSQL audit log tables.
@@ -139,8 +141,9 @@ periscope/
   - [ ] Configurable table-based drainer for custom MySQL/PostgreSQL log and event tables.
   - [ ] Dynamic JSON dimension extractor and schema evolution handling.
 - [ ] **Audit & Activity Log Dashboard UI**:
-  - [ ] Dedicated UI views for Database Activity Streams and Postgres Audit logs.
-  - [ ] SQL syntax highlighting, user filtering, IP geolocation/client tracking, and query pattern breakdown.
+  - [x] Dedicated Aurora DAS Audit Dashboard (`ui/src/pages/das/index.tsx`) with real-time engine switching, metric cards, SQL detail modal, and copy integration.
+  - [ ] Dedicated PostgreSQL Audit (`pgaudit`) Log view.
+  - [ ] IP geolocation/client tracking and query pattern breakdown.
 
 ### Phase 6: Frontend UI Polish & Advanced Components
 - [x] Initialize Vite frontend in `ui/` directory with Tailwind CSS and Shadcn UI.

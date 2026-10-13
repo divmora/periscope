@@ -24,6 +24,9 @@ type ProjectSource struct {
 }
 
 func ListProjectSources(ctx context.Context, projectIID string) ([]ProjectSource, error) {
+	if Pool == nil {
+		return nil, fmt.Errorf("database connection pool not initialized")
+	}
 	rows, err := Pool.Query(ctx, `
 		SELECT ps.id, ps.iid, p.iid, ps.name, ps.source_type, ps.status, ps.config, ps.created_at, ps.updated_at
 		FROM project_sources ps
