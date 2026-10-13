@@ -563,7 +563,7 @@ export default function SourcesPage() {
               <div className="mt-5 pt-3 border-t border-border/60 flex items-center justify-between">
                 <span className="text-[11px] text-muted-foreground flex items-center gap-1">
                   <Clock className="h-3 w-3 text-primary" />
-                  Auto-syncing
+                  {s.source_type === "aurora_das" ? "External Lakehouse" : "Auto-syncing"}
                 </span>
                 <button
                   onClick={() => {
