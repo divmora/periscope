@@ -269,7 +269,11 @@ export default function RootLayout() {
                     </BreadcrumbItem>
                     <BreadcrumbSeparator className="hidden md:block" />
                     <BreadcrumbItem>
-                      <BreadcrumbPage className="capitalize">{pathParts[pathParts.length - 1]}</BreadcrumbPage>
+                      <BreadcrumbPage className="capitalize">
+                        {pathParts[pathParts.length - 1]?.toLowerCase() === "das" 
+                          ? "Aurora DAS" 
+                          : pathParts[pathParts.length - 1]}
+                      </BreadcrumbPage>
                     </BreadcrumbItem>
                   </>
                 ) : (

@@ -284,7 +284,8 @@ func GetDASStatsDirect(ctx context.Context, config map[string]any) (*DASStats, e
 				SELECT 
 					COUNT(*) AS total_queries,
 					SUM(CASE WHEN status != 'success' THEN 1 ELSE 0 END) AS total_errors,
-					COALESCE(AVG(execution_time_ms), 0.0) AS avg_duration_ms
+					COALESCE(AVG(execution_time_ms), 0.0) AS avg_duration_ms,
+					COUNT(DISTINCT db_user) AS active_users
 				FROM read_parquet('%s', hive_partitioning = true);
 			`, s3Path)
 			region, _ := config["s3_region"].(string)
@@ -294,7 +295,7 @@ func GetDASStatsDirect(ctx context.Context, config map[string]any) (*DASStats, e
 			res, err := engine.ExecuteQuery(ctx, setupSQL+" "+statsSQL)
 			if err == nil && res != nil && len(res.Rows) > 0 {
 				row := res.Rows[0]
-				var totalQueries, totalErrors int64
+				var totalQueries, totalErrors, activeUsers int64
 				var avgDuration float64
 				if len(row) > 0 {
 					if v, ok := row[0].(float64); ok {
@@ -311,10 +312,16 @@ func GetDASStatsDirect(ctx context.Context, config map[string]any) (*DASStats, e
 						avgDuration = v
 					}
 				}
+				if len(row) > 3 {
+					if v, ok := row[3].(float64); ok {
+						activeUsers = int64(v)
+					}
+				}
 				return &DASStats{
 					TotalQueries:  totalQueries,
 					TotalErrors:   totalErrors,
 					AvgDurationMS: avgDuration,
+					ActiveUsers:   activeUsers,
 					CommandCounts: map[string]int64{
 						"SELECT": int64(float64(totalQueries) * 0.75),
 						"UPDATE": int64(float64(totalQueries) * 0.15),
@@ -332,6 +339,7 @@ func GetDASStatsDirect(ctx context.Context, config map[string]any) (*DASStats, e
 		TotalQueries:  24850,
 		TotalErrors:   14,
 		AvgDurationMS: 4.82,
+		ActiveUsers:   5,
 		CommandCounts: map[string]int64{
 			"SELECT":  18900,
 			"UPDATE":  3400,

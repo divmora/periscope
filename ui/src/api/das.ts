@@ -34,6 +34,7 @@ export interface DASStats {
   total_queries: number;
   total_errors: number;
   avg_duration_ms: number;
+  active_users?: number;
   command_counts: Record<string, number>;
   engine: string;
 }

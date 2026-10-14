@@ -37,6 +37,7 @@ type DASStats struct {
 	TotalQueries  int64            `json:"total_queries"`
 	TotalErrors   int64            `json:"total_errors"`
 	AvgDurationMS float64          `json:"avg_duration_ms"`
+	ActiveUsers   int64            `json:"active_users"`
 	CommandCounts map[string]int64 `json:"command_counts"`
 	Engine        string           `json:"engine"` // "direct" or "athena"
 }
