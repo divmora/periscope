@@ -13,10 +13,11 @@ import (
 type contextKey string
 
 const (
-	UserIDKey      contextKey = "userID"
-	GlobalRoleKey  contextKey = "globalRole"
-	ProjectRoleKey contextKey = "projectRole"
-	ProjectIIDKey  contextKey = "projectIID"
+	UserIDKey         contextKey = "userID"
+	GlobalRoleKey     contextKey = "globalRole"
+	ProjectRoleKey    contextKey = "projectRole"
+	ProjectIIDKey     contextKey = "projectIID"
+	AllowedSourcesKey contextKey = "allowedSources"
 )
 
 // Project roles
@@ -100,7 +101,7 @@ func RequireProjectAccess(next http.Handler) http.Handler {
 			return
 		}
 
-		role, err := store.GetProjectRole(r.Context(), userID, projectIID)
+		role, allowedSources, err := store.GetUserProjectPermissions(r.Context(), userID, projectIID)
 		if err != nil {
 			api.RespondError(w, http.StatusInternalServerError, "DB_ERROR", "Failed to verify project access", nil)
 			return
@@ -113,8 +114,35 @@ func RequireProjectAccess(next http.Handler) http.Handler {
 
 		ctx := context.WithValue(r.Context(), ProjectRoleKey, role)
 		ctx = context.WithValue(ctx, ProjectIIDKey, projectIID)
+		ctx = context.WithValue(ctx, AllowedSourcesKey, allowedSources)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// UserCanAccessSource checks if the user is authorized to access the given sourceIID.
+func UserCanAccessSource(ctx context.Context, sourceIID string) bool {
+	if sourceIID == "" {
+		return true
+	}
+	globalRole, _ := ctx.Value(GlobalRoleKey).(string)
+	if globalRole == "admin" {
+		return true
+	}
+	projectRole, _ := ctx.Value(ProjectRoleKey).(string)
+	if projectRole == RoleAdmin {
+		return true
+	}
+	allowed, ok := ctx.Value(AllowedSourcesKey).([]string)
+	if !ok || len(allowed) == 0 {
+		// Empty/nil allowed_sources indicates unrestricted access to all sources
+		return true
+	}
+	for _, id := range allowed {
+		if id == sourceIID {
+			return true
+		}
+	}
+	return false
 }
 
 // RequireProjectMember ensures the user has at least 'member' or 'admin' role on the scoped project

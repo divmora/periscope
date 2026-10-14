@@ -2,18 +2,21 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ProjectsAPI, Project, ProjectMember } from "../../api/projects";
+import { SourcesAPI } from "../../api/sources";
 import { SystemAPI } from "../../api/system";
+import { TeamsManager } from "./TeamsManager";
 import { 
-  Save, Server, Database, Shield, AlertTriangle, Loader2, 
+  Save, Server, Database, Loader2, 
   Users, UserPlus, Trash2, ShieldCheck, ShieldAlert, HardDrive, 
-  Key, Cpu, CheckCircle2, Sparkles
+  Key, Cpu, CheckCircle2, Sparkles, UserCheck
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 export default function SettingsPage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const [rbacTab, setRbacTab] = useState<"teams" | "members">("teams");
 
   // Global system storage query
   const { data: systemStorage } = useQuery({
@@ -34,6 +37,15 @@ export default function SettingsPage() {
     queryFn: () => ProjectsAPI.listMembers(projectId as string),
     enabled: !!projectId,
   });
+
+  // 3. Fetch Project Sources (for granular RBAC permissions)
+  const { data: sourcesData } = useQuery({
+    queryKey: ['sources', projectId],
+    queryFn: () => SourcesAPI.listSources(projectId as string),
+    enabled: !!projectId,
+  });
+
+  const sources = sourcesData?.data || [];
 
   const [formData, setFormData] = useState<Partial<Project>>({});
   const [successMsg, setSuccessMsg] = useState("");
@@ -412,14 +424,49 @@ export default function SettingsPage() {
 
       {/* Team & RBAC Access Control (Separate Form) */}
       <div className="mt-12 bg-card border border-border rounded-xl overflow-hidden shadow-sm">
-        <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-border bg-muted/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Users className="h-5 w-5 text-blue-400" />
-            <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Team &amp; Access Control (RBAC)</h2>
+            <div>
+              <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Access &amp; Permissions (RBAC)</h2>
+              <p className="text-xs text-muted-foreground">Manage project teams, roles, and granular data source access.</p>
+            </div>
+          </div>
+
+          {/* Tab Switcher: Teams vs Direct Members */}
+          <div className="flex items-center bg-muted/60 border border-border p-1 rounded-lg">
+            <button
+              type="button"
+              onClick={() => setRbacTab("teams")}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                rbacTab === "teams"
+                  ? "bg-card text-foreground shadow-sm border border-border"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Users className="h-3.5 w-3.5 text-primary" />
+              Teams (Recommended)
+            </button>
+            <button
+              type="button"
+              onClick={() => setRbacTab("members")}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                rbacTab === "members"
+                  ? "bg-card text-foreground shadow-sm border border-border"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <UserCheck className="h-3.5 w-3.5 text-blue-400" />
+              Direct Members
+            </button>
           </div>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-6">
+          {rbacTab === "teams" ? (
+            <TeamsManager projectId={projectId as string} sources={sources} />
+          ) : (
+            <div className="space-y-6">
           <form onSubmit={handleAddMember} className="flex flex-col sm:flex-row gap-3 items-end">
             <div className="flex-1 w-full">
               <label className="block text-xs font-medium text-foreground mb-1.5">User Email or Username</label>
@@ -521,7 +568,9 @@ export default function SettingsPage() {
             </table>
           </div>
         </div>
-      </div>
+      )}
+    </div>
+  </div>
 
       {/* Danger Zone */}
       <div className="mt-12 bg-card border border-destructive/30 rounded-xl overflow-hidden shadow-sm">

@@ -5,11 +5,12 @@ import (
 	"net/http"
 
 	"github.com/divmora/periscope/internal/api"
+	"github.com/divmora/periscope/internal/auth"
 	"github.com/divmora/periscope/internal/store"
 	"github.com/go-chi/chi/v5"
 )
 
-// ListSources lists all data sources for a project
+// ListSources lists all data sources for a project that the user has permission to view
 func ListSources(w http.ResponseWriter, r *http.Request) {
 	projectIID := chi.URLParam(r, "projectId")
 	if projectIID == "" {
@@ -23,11 +24,18 @@ func ListSources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if sources == nil {
-		sources = []store.ProjectSource{}
+	var visible []store.ProjectSource
+	for _, s := range sources {
+		if auth.UserCanAccessSource(r.Context(), s.IID) {
+			visible = append(visible, s)
+		}
 	}
 
-	api.RespondJSON(w, http.StatusOK, sources, nil)
+	if visible == nil {
+		visible = []store.ProjectSource{}
+	}
+
+	api.RespondJSON(w, http.StatusOK, visible, nil)
 }
 
 // CreateSource adds a new data source to a project

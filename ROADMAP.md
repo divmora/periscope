@@ -88,6 +88,8 @@ periscope/
   - *Note: OAuth2/SSO and MFA (Multi-Factor Authentication) support are planned for a later phase.*
 - [x] Implement RBAC Middleware (Admin, Member, Viewer roles) and Multi-tenant isolation.
 - [x] Implement Project Memberships Management and Role delegation.
+- [x] Implement Project Teams and Granular Source-Level RBAC (Grafana/Datadog model) with `allowed_sources` restrictions and team memberships (`internal/store/teams.go`, `internal/api/handlers/teams.go`, `ui/src/pages/settings/TeamsManager.tsx`).
+- [x] Support multiple same-type sources with permission-gated Source Switcher (e.g. multiple Aurora DAS clusters).
 
 ### Phase 3: Data Extraction & Storage Layer (The Collector Engine)
 - [x] Implement Pluggable Storage Drivers (`internal/storage`):
@@ -114,7 +116,7 @@ periscope/
 
 ### Phase 5: Multi-Source Database Log & Audit Ingestion
 - [x] **Multi-Source Project Schema & Ingestion Registry**:
-  - [x] Decouple project metadata from a single source DSN (`internal/store/migrations/002_multisource_and_retention.sql`).
+  - [x] Decouple project metadata and creation from a single source DSN (`internal/store/migrations/002_multisource_and_retention.sql`, `ui/src/pages/projects/CreateProjectDialog.tsx`).
   - [x] Create `project_sources` table and typed CRUD APIs (`internal/store/sources.go`, `internal/api/handlers/sources.go`, `ui/src/api/sources.ts`).
   - [x] Build dedicated Ingestion Sources management UI (`ui/src/pages/sources/SourcesPage.tsx`) supporting Laravel Telescope, AWS Aurora DAS, PostgreSQL Audit, and OpenTelemetry.
 - [x] **Advanced Data Retention & Lifecycle Tiering**:

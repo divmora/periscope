@@ -11,12 +11,14 @@ import (
 )
 
 type AddMemberRequest struct {
-	UserIdentifier string `json:"user_identifier"`
-	Role           string `json:"role"`
+	UserIdentifier string   `json:"user_identifier"`
+	Role           string   `json:"role"`
+	AllowedSources []string `json:"allowed_sources,omitempty"`
 }
 
 type UpdateMemberRequest struct {
-	Role string `json:"role"`
+	Role           string   `json:"role"`
+	AllowedSources []string `json:"allowed_sources,omitempty"`
 }
 
 // ListProjectMembers returns the list of members and their roles for a project
@@ -55,7 +57,7 @@ func AddProjectMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	member, err := store.AddProjectMember(r.Context(), projectIID, req.UserIdentifier, req.Role)
+	member, err := store.AddProjectMember(r.Context(), projectIID, req.UserIdentifier, req.Role, req.AllowedSources)
 	if err != nil {
 		if errors.Is(err, store.ErrUserNotFound) {
 			api.RespondError(w, http.StatusNotFound, "USER_NOT_FOUND", "User not found with provided username/email", nil)
@@ -97,7 +99,7 @@ func UpdateProjectMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := store.UpdateProjectMemberRole(r.Context(), projectIID, userIID, req.Role)
+	err := store.UpdateProjectMemberRole(r.Context(), projectIID, userIID, req.Role, req.AllowedSources)
 	if err != nil {
 		if errors.Is(err, store.ErrMemberNotFound) {
 			api.RespondError(w, http.StatusNotFound, "MEMBER_NOT_FOUND", "Member not found in this project", nil)

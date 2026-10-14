@@ -1,11 +1,12 @@
-import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { DASAPI, DASRecord } from "../../api/das";
+import { SourcesAPI } from "../../api/sources";
 import { 
   Shield, Database, Search, RefreshCw, Clock, 
   Terminal, AlertTriangle, Copy, Check, 
-  Cpu, Flame, Server
+  Cpu, Flame, Server, ExternalLink
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import {
 export default function DASPage() {
   const { projectId } = useParams();
   const [engine, setEngine] = useState<"direct" | "athena">("direct");
+  const [selectedSourceIid, setSelectedSourceIid] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUser, setSelectedUser] = useState("");
   const [selectedCommand, setSelectedCommand] = useState("");
@@ -27,11 +29,27 @@ export default function DASPage() {
   const [selectedRecord, setSelectedRecord] = useState<DASRecord | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Fetch DAS Sources
+  const { data: sourcesData, isLoading: isLoadingSources } = useQuery({
+    queryKey: ['sources', projectId],
+    queryFn: () => SourcesAPI.listSources(projectId as string),
+    enabled: !!projectId,
+  });
+
+  const dasSources = (sourcesData?.data || []).filter(s => s.source_type === "aurora_das");
+
+  useEffect(() => {
+    if (!selectedSourceIid && dasSources.length > 0) {
+      setSelectedSourceIid(dasSources[0].iid);
+    }
+  }, [dasSources, selectedSourceIid]);
+
   // Fetch DAS Logs
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['das_activity', projectId, engine, searchTerm, selectedUser, selectedCommand, selectedStatus],
+    queryKey: ['das_activity', projectId, selectedSourceIid, engine, searchTerm, selectedUser, selectedCommand, selectedStatus],
     queryFn: () => DASAPI.getActivity(projectId as string, {
       engine,
+      source_iid: selectedSourceIid || undefined,
       search: searchTerm,
       user: selectedUser,
       command: selectedCommand,
@@ -42,8 +60,8 @@ export default function DASPage() {
 
   // Fetch DAS Summary Stats
   const { data: statsData } = useQuery({
-    queryKey: ['das_stats', projectId],
-    queryFn: () => DASAPI.getStats(projectId as string),
+    queryKey: ['das_stats', projectId, selectedSourceIid],
+    queryFn: () => DASAPI.getStats(projectId as string, selectedSourceIid || undefined),
     enabled: !!projectId,
   });
 
@@ -91,38 +109,76 @@ export default function DASPage() {
           </p>
         </div>
 
-        {/* Engine Switcher */}
-        <div className="flex items-center bg-card border border-border p-1 rounded-lg">
-          <button
-            onClick={() => setEngine("direct")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-              engine === "direct"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Cpu className="h-3.5 w-3.5" />
-            Direct S3 (DuckDB)
-            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded-full border border-emerald-500/30">
-              Fast &amp; Free
-            </span>
-          </button>
-          <button
-            onClick={() => setEngine("athena")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-              engine === "athena"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Server className="h-3.5 w-3.5" />
-            Amazon Athena
-            <span className="text-[10px] bg-blue-500/20 text-blue-300 px-1.5 py-0.2 rounded-full border border-blue-500/30">
-              Distributed
-            </span>
-          </button>
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Multi-Source Switcher */}
+          {dasSources.length > 0 && (
+            <div className="flex items-center gap-2 bg-card border border-border px-3 py-1.5 rounded-lg text-xs shadow-sm">
+              <Database className="h-3.5 w-3.5 text-primary" />
+              <span className="text-muted-foreground font-medium">Source:</span>
+              <select
+                value={selectedSourceIid}
+                onChange={(e) => setSelectedSourceIid(e.target.value)}
+                className="bg-transparent border-none text-foreground font-medium focus:outline-none cursor-pointer"
+              >
+                {dasSources.map((s) => (
+                  <option key={s.iid} value={s.iid} className="bg-popover text-foreground">
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Engine Switcher */}
+          <div className="flex items-center bg-card border border-border p-1 rounded-lg">
+            <button
+              onClick={() => setEngine("direct")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                engine === "direct"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Cpu className="h-3.5 w-3.5" />
+              Direct S3 (DuckDB)
+              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded-full border border-emerald-500/30">
+                Fast &amp; Free
+              </span>
+            </button>
+            <button
+              onClick={() => setEngine("athena")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                engine === "athena"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Server className="h-3.5 w-3.5" />
+              Amazon Athena
+              <span className="text-[10px] bg-blue-500/20 text-blue-300 px-1.5 py-0.2 rounded-full border border-blue-500/30">
+                Distributed
+              </span>
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* No DAS Sources Warning */}
+      {dasSources.length === 0 && !isLoadingSources && (
+        <div className="rounded-xl border border-dashed border-border bg-card/50 p-6 text-center">
+          <Database className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-60" />
+          <h3 className="text-base font-semibold text-foreground">No Aurora DAS Sources Configured</h3>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto mt-1 mb-4">
+            Connect an Amazon Aurora Database Activity Stream via Direct S3 or Athena to start analyzing real-time SQL execution audits.
+          </p>
+          <Link to={`/projects/${projectId}/settings`}>
+            <Button size="sm" variant="outline" className="gap-2">
+              <ExternalLink className="h-4 w-4" />
+              Add Data Source in Settings
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

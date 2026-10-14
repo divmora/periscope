@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/divmora/periscope/internal/api"
+	"github.com/divmora/periscope/internal/auth"
 	"github.com/divmora/periscope/internal/olap"
 	"github.com/divmora/periscope/internal/store"
 	"github.com/go-chi/chi/v5"
@@ -61,9 +62,14 @@ func GetDASActivity(w http.ResponseWriter, r *http.Request) {
 
 	var dasSource *store.ProjectSource
 	targetSourceIID := q.Get("source_iid")
+	if targetSourceIID != "" && !auth.UserCanAccessSource(r.Context(), targetSourceIID) {
+		api.RespondError(w, http.StatusForbidden, "FORBIDDEN", "You do not have permission to access this data source", nil)
+		return
+	}
+
 	for i := range sources {
 		s := &sources[i]
-		if s.SourceType == "aurora_das" {
+		if s.SourceType == "aurora_das" && auth.UserCanAccessSource(r.Context(), s.IID) {
 			if targetSourceIID == "" || s.IID == targetSourceIID {
 				dasSource = s
 				break
@@ -132,13 +138,22 @@ func GetDASStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	targetSourceIID := r.URL.Query().Get("source_iid")
+	if targetSourceIID != "" && !auth.UserCanAccessSource(r.Context(), targetSourceIID) {
+		api.RespondError(w, http.StatusForbidden, "FORBIDDEN", "You do not have permission to access this data source", nil)
+		return
+	}
+
 	var sourceConfig map[string]any
 	sources, err := store.ListProjectSources(r.Context(), projectIID)
 	if err == nil {
 		for i := range sources {
-			if sources[i].SourceType == "aurora_das" {
-				sourceConfig = sources[i].Config
-				break
+			s := &sources[i]
+			if s.SourceType == "aurora_das" && auth.UserCanAccessSource(r.Context(), s.IID) {
+				if targetSourceIID == "" || s.IID == targetSourceIID {
+					sourceConfig = s.Config
+					break
+				}
 			}
 		}
 	}

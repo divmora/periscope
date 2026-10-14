@@ -63,8 +63,9 @@ export const DASAPI = {
     return res.json();
   },
 
-  getStats: async (projectId: string): Promise<APIResponse<DASStats>> => {
-    const res = await fetch(`/api/projects/${projectId}/das/stats`);
+  getStats: async (projectId: string, sourceIid?: string): Promise<APIResponse<DASStats>> => {
+    const url = `/api/projects/${projectId}/das/stats${sourceIid ? `?source_iid=${sourceIid}` : ""}`;
+    const res = await fetch(url);
     if (!res.ok) {
       throw new Error(`Failed to fetch DAS statistics: ${res.statusText}`);
     }

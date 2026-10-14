@@ -17,11 +17,12 @@ var (
 )
 
 type ProjectMember struct {
-	UserIID   string    `json:"user_iid"`
-	Username  string    `json:"username"`
-	Email     string    `json:"email"`
-	Role      string    `json:"role"`
-	CreatedAt time.Time `json:"created_at"`
+	UserIID        string    `json:"user_iid"`
+	Username       string    `json:"username"`
+	Email          string    `json:"email"`
+	Role           string    `json:"role"`
+	AllowedSources []string  `json:"allowed_sources,omitempty"` // empty or nil = access to all sources
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 func isValidProjectRole(role string) bool {
@@ -30,27 +31,40 @@ func isValidProjectRole(role string) bool {
 
 // GetProjectRole returns the role of the user for a project, or empty string if not a member.
 func GetProjectRole(ctx context.Context, userID int, projectIID string) (string, error) {
+	role, _, err := GetProjectMembership(ctx, userID, projectIID)
+	return role, err
+}
+
+// GetProjectMembership returns the role and allowed sources of the user for a project.
+func GetProjectMembership(ctx context.Context, userID int, projectIID string) (string, []string, error) {
+	if Pool == nil {
+		return "", nil, fmt.Errorf("database connection pool not initialized")
+	}
 	var role string
+	var allowedSources []string
 	err := Pool.QueryRow(ctx, `
-		SELECT pm.role::text
+		SELECT pm.role::text, COALESCE(pm.allowed_sources, '{}')
 		FROM project_memberships pm
 		JOIN projects p ON p.id = pm.project_id
 		WHERE pm.user_id = $1 AND p.iid = $2
-	`, userID, projectIID).Scan(&role)
+	`, userID, projectIID).Scan(&role, &allowedSources)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return "", nil
+			return "", nil, nil
 		}
-		return "", err
+		return "", nil, err
 	}
-	return role, nil
+	return role, allowedSources, nil
 }
 
 // ListProjectMembers lists all members of a project.
 func ListProjectMembers(ctx context.Context, projectIID string) ([]ProjectMember, error) {
+	if Pool == nil {
+		return nil, fmt.Errorf("database connection pool not initialized")
+	}
 	rows, err := Pool.Query(ctx, `
-		SELECT u.iid, u.username, u.email, pm.role::text, pm.created_at
+		SELECT u.iid, u.username, u.email, pm.role::text, COALESCE(pm.allowed_sources, '{}'), pm.created_at
 		FROM project_memberships pm
 		JOIN users u ON u.id = pm.user_id
 		JOIN projects p ON p.id = pm.project_id
@@ -65,7 +79,7 @@ func ListProjectMembers(ctx context.Context, projectIID string) ([]ProjectMember
 	var members []ProjectMember
 	for rows.Next() {
 		var m ProjectMember
-		if err := rows.Scan(&m.UserIID, &m.Username, &m.Email, &m.Role, &m.CreatedAt); err != nil {
+		if err := rows.Scan(&m.UserIID, &m.Username, &m.Email, &m.Role, &m.AllowedSources, &m.CreatedAt); err != nil {
 			return nil, err
 		}
 		members = append(members, m)
@@ -79,9 +93,12 @@ func ListProjectMembers(ctx context.Context, projectIID string) ([]ProjectMember
 
 // AddProjectMember adds or updates a user membership in a project.
 // userIdentifier can be an email, username, or user IID UUID.
-func AddProjectMember(ctx context.Context, projectIID string, userIdentifier string, role string) (*ProjectMember, error) {
+func AddProjectMember(ctx context.Context, projectIID string, userIdentifier string, role string, allowedSources []string) (*ProjectMember, error) {
 	if !isValidProjectRole(role) {
 		return nil, ErrInvalidRole
+	}
+	if Pool == nil {
+		return nil, fmt.Errorf("database connection pool not initialized")
 	}
 
 	// 1. Find user by email, username, or iid
@@ -114,37 +131,43 @@ func AddProjectMember(ctx context.Context, projectIID string, userIdentifier str
 	// 3. Upsert membership
 	var createdAt time.Time
 	var assignedRole string
+	var savedSources []string
 	err = Pool.QueryRow(ctx, `
-		INSERT INTO project_memberships (project_id, user_id, role)
-		VALUES ($1, $2, $3::project_role)
+		INSERT INTO project_memberships (project_id, user_id, role, allowed_sources)
+		VALUES ($1, $2, $3::project_role, $4)
 		ON CONFLICT (project_id, user_id)
-		DO UPDATE SET role = EXCLUDED.role
-		RETURNING role::text, created_at
-	`, internalProjectID, internalUserID, role).Scan(&assignedRole, &createdAt)
+		DO UPDATE SET role = EXCLUDED.role, allowed_sources = EXCLUDED.allowed_sources
+		RETURNING role::text, COALESCE(allowed_sources, '{}'), created_at
+	`, internalProjectID, internalUserID, role, allowedSources).Scan(&assignedRole, &savedSources, &createdAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to assign project membership: %w", err)
 	}
 
 	member.Role = assignedRole
+	member.AllowedSources = savedSources
 	member.CreatedAt = createdAt
 	return &member, nil
 }
 
-// UpdateProjectMemberRole updates the role of an existing project member.
-func UpdateProjectMemberRole(ctx context.Context, projectIID string, userIID string, role string) error {
+// UpdateProjectMemberRole updates the role and allowed sources of an existing project member.
+func UpdateProjectMemberRole(ctx context.Context, projectIID string, userIID string, role string, allowedSources []string) error {
 	if !isValidProjectRole(role) {
 		return ErrInvalidRole
+	}
+	if Pool == nil {
+		return fmt.Errorf("database connection pool not initialized")
 	}
 
 	res, err := Pool.Exec(ctx, `
 		UPDATE project_memberships pm
-		SET role = $3::project_role
+		SET role = $3::project_role,
+		    allowed_sources = $4
 		FROM projects p, users u
 		WHERE pm.project_id = p.id
 		  AND pm.user_id = u.id
 		  AND p.iid = $1
 		  AND u.iid = $2
-	`, projectIID, userIID, role)
+	`, projectIID, userIID, role, allowedSources)
 	if err != nil {
 		return err
 	}

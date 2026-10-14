@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ProjectsAPI } from "../../api/projects";
 import { SystemAPI } from "../../api/system";
 import { Button } from "@/components/ui/button";
-import { Plus, Database, Cloud, HardDrive, ShieldCheck, Layers, Sparkles } from "lucide-react";
+import { Plus, Database, Cloud, HardDrive, Sparkles } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -30,8 +30,6 @@ import { Switch } from "@/components/ui/switch";
 
 const formSchema = z.object({
   name: z.string().min(2, "Project name must be at least 2 characters"),
-  source_type: z.string(),
-  source_dsn: z.string().optional(),
   storage_mode: z.enum(["default", "custom"]),
   storage_type: z.string(),
   storage_bucket: z.string().optional(),
@@ -58,8 +56,6 @@ export function CreateProjectDialog() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
-      source_type: "laravel_telescope",
-      source_dsn: "",
       storage_mode: "default",
       storage_type: "s3",
       storage_bucket: "",
@@ -75,7 +71,6 @@ export function CreateProjectDialog() {
   });
 
   const storageMode = form.watch("storage_mode");
-  const sourceType = form.watch("source_type");
 
   const createMutation = useMutation({
     mutationFn: (values: z.infer<typeof formSchema>) => {
@@ -86,10 +81,6 @@ export function CreateProjectDialog() {
         compaction_enabled: values.compaction_enabled,
         prune_enabled: values.source_retention_days >= 0,
       };
-
-      if (values.source_dsn?.trim()) {
-        payload.source_dsn = values.source_dsn.trim();
-      }
 
       if (values.storage_mode === "default") {
         payload.storage_bucket = "default";
@@ -160,73 +151,6 @@ export function CreateProjectDialog() {
                   </FormItem>
                 )}
               />
-            </div>
-
-            {/* Ingestion Source Section */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 pb-2 border-b border-border">
-                <Layers className="h-4 w-4 text-blue-500" />
-                <h3 className="font-semibold text-sm text-foreground">Initial Ingestion Source</h3>
-              </div>
-
-              <FormField
-                control={form.control}
-                name="source_type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Source Type</FormLabel>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {[
-                        { id: "laravel_telescope", label: "Telescope", desc: "Laravel Telemetry" },
-                        { id: "aurora_das", label: "Aurora DAS", desc: "AWS Activity Stream" },
-                        { id: "postgres_audit", label: "PG Audit", desc: "PostgreSQL Logs" },
-                        { id: "none", label: "None / OTLP", desc: "Configure Later" },
-                      ].map((s) => (
-                        <div
-                          key={s.id}
-                          onClick={() => field.onChange(s.id)}
-                          className={`cursor-pointer rounded-lg border p-3 text-left transition-all ${
-                            field.value === s.id
-                              ? "border-primary bg-primary/10 text-foreground"
-                              : "border-border bg-muted/30 hover:bg-muted/50 text-muted-foreground"
-                          }`}
-                        >
-                          <div className="text-xs font-semibold text-foreground">{s.label}</div>
-                          <div className="text-[10px] text-muted-foreground mt-0.5">{s.desc}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </FormItem>
-                )}
-              />
-
-              {sourceType !== "none" && (
-                <FormField
-                  control={form.control}
-                  name="source_dsn"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Database Connection String (DSN)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="password"
-                          placeholder={
-                            sourceType === "laravel_telescope"
-                              ? "mysql://user:pass@host:3306/db or postgres://..."
-                              : "postgres://user:pass@host:5432/db"
-                          }
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription className="flex items-center gap-1 text-xs">
-                        <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
-                        Credentials are automatically encrypted at rest with AES-256-GCM.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
             </div>
 
             {/* Parquet Storage Section */}

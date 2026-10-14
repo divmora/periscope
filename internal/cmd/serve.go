@@ -88,6 +88,19 @@ var serveCmd = &cobra.Command{
 							r.With(auth.RequireProjectAdmin).Delete("/{userIid}", handlers.RemoveProjectMember)
 						})
 
+						// Project Teams & Source-level RBAC (Grafana/Datadog model)
+						r.Route("/teams", func(r chi.Router) {
+							r.Get("/", handlers.ListProjectTeams)
+							r.With(auth.RequireProjectAdmin).Post("/", handlers.CreateProjectTeam)
+							r.Route("/{teamId}", func(r chi.Router) {
+								r.With(auth.RequireProjectAdmin).Put("/", handlers.UpdateProjectTeam)
+								r.With(auth.RequireProjectAdmin).Delete("/", handlers.DeleteProjectTeam)
+								r.Get("/members", handlers.ListTeamMembers)
+								r.With(auth.RequireProjectAdmin).Post("/members", handlers.AddTeamMember)
+								r.With(auth.RequireProjectAdmin).Delete("/members/{userIid}", handlers.RemoveTeamMember)
+							})
+						})
+
 						// Multi-Source Data Ingestion Sources
 						r.Route("/sources", func(r chi.Router) {
 							r.Get("/", handlers.ListSources)

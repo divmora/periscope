@@ -26,6 +26,7 @@ export interface ProjectMember {
   username: string;
   email: string;
   role: "viewer" | "member" | "admin";
+  allowed_sources?: string[];
   created_at: string;
 }
 
@@ -86,11 +87,12 @@ export const ProjectsAPI = {
   addMember: async (
     projectId: string,
     userIdentifier: string,
-    role: "viewer" | "member" | "admin"
+    role: "viewer" | "member" | "admin",
+    allowedSources?: string[]
   ): Promise<APIResponse<ProjectMember>> => {
     return fetchAPI<ProjectMember>(`/projects/${projectId}/members`, {
       method: "POST",
-      body: JSON.stringify({ user_identifier: userIdentifier, role }),
+      body: JSON.stringify({ user_identifier: userIdentifier, role, allowed_sources: allowedSources }),
     });
   },
 
@@ -100,11 +102,12 @@ export const ProjectsAPI = {
   updateMemberRole: async (
     projectId: string,
     userIid: string,
-    role: "viewer" | "member" | "admin"
+    role: "viewer" | "member" | "admin",
+    allowedSources?: string[]
   ): Promise<APIResponse<{ message: string }>> => {
     return fetchAPI<{ message: string }>(`/projects/${projectId}/members/${userIid}`, {
       method: "PUT",
-      body: JSON.stringify({ role }),
+      body: JSON.stringify({ role, allowed_sources: allowedSources }),
     });
   },
 
