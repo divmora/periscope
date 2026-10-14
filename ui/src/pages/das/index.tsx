@@ -20,7 +20,6 @@ import {
 
 export default function DASPage() {
   const { projectId } = useParams();
-  const [engine, setEngine] = useState<"direct" | "athena">("direct");
   const [selectedSourceIid, setSelectedSourceIid] = useState<string>("");
   const [timeRange, setTimeRange] = useState<string>("1h");
   const [searchTerm, setSearchTerm] = useState("");
@@ -44,6 +43,9 @@ export default function DASPage() {
       setSelectedSourceIid(dasSources[0].iid);
     }
   }, [dasSources, selectedSourceIid]);
+
+  const selectedSource = dasSources.find(s => s.iid === selectedSourceIid) || dasSources[0];
+  const sourceEngine = (selectedSource?.config?.engine === "athena") ? "athena" : "direct";
 
   const getTimeBounds = (range: string) => {
     const now = new Date();
@@ -71,9 +73,9 @@ export default function DASPage() {
 
   // Fetch DAS Logs
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['das_activity', projectId, selectedSourceIid, engine, timeRange, searchTerm, selectedUser, selectedCommand, selectedStatus],
+    queryKey: ['das_activity', projectId, selectedSourceIid, sourceEngine, timeRange, searchTerm, selectedUser, selectedCommand, selectedStatus],
     queryFn: () => DASAPI.getActivity(projectId as string, {
-      engine,
+      engine: sourceEngine,
       source_iid: selectedSourceIid || undefined,
       start_date: bounds.startDate,
       end_date: bounds.endDate,
@@ -166,40 +168,22 @@ export default function DASPage() {
                   </option>
                 ))}
               </select>
+              {/* Source-Bound Engine Indicator Badge */}
+              <div className="flex items-center gap-1.5 pl-2 ml-1 border-l border-border">
+                {sourceEngine === "athena" ? (
+                  <span className="flex items-center gap-1 text-[11px] font-mono font-medium px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                    <Server className="h-3 w-3" />
+                    Athena (Glue)
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-[11px] font-mono font-medium px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <Cpu className="h-3 w-3" />
+                    DuckDB (Direct S3)
+                  </span>
+                )}
+              </div>
             </div>
           )}
-
-          {/* Engine Segmented Control */}
-          <div className="flex items-center bg-muted/60 border border-border p-1 rounded-lg">
-            <button
-              onClick={() => setEngine("direct")}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all ${
-                engine === "direct"
-                  ? "bg-card text-foreground shadow-sm border border-border"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Cpu className="h-3.5 w-3.5 text-emerald-400" />
-              Direct S3 (DuckDB)
-              <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.2 rounded border border-emerald-500/20 font-mono">
-                Fast &amp; Free
-              </span>
-            </button>
-            <button
-              onClick={() => setEngine("athena")}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all ${
-                engine === "athena"
-                  ? "bg-card text-foreground shadow-sm border border-border"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Server className="h-3.5 w-3.5 text-blue-400" />
-              Amazon Athena
-              <span className="text-[10px] bg-blue-500/10 text-blue-400 px-1.5 py-0.2 rounded border border-blue-500/20 font-mono">
-                Distributed
-              </span>
-            </button>
-          </div>
         </div>
       </div>
 
@@ -356,7 +340,7 @@ export default function DASPage() {
                 <tr>
                   <td colSpan={9} className="py-12 text-center text-muted-foreground">
                     <RefreshCw className="h-6 w-6 animate-spin text-primary mx-auto mb-2" />
-                    Executing query via {engine === "direct" ? "DuckDB" : "Amazon Athena"}...
+                    Executing query via {sourceEngine === "direct" ? "Embedded DuckDB (Direct S3)" : "Amazon Athena"}...
                   </td>
                 </tr>
               ) : records.length === 0 ? (
