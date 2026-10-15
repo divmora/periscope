@@ -72,7 +72,7 @@ export default function DASPage() {
   const bounds = getTimeBounds(timeRange);
 
   // Fetch DAS Logs
-  const { data, isLoading, isFetching, refetch } = useQuery({
+  const { data, isLoading, isFetching, refetch, error: activityError } = useQuery({
     queryKey: ['das_activity', projectId, selectedSourceIid, sourceEngine, timeRange, searchTerm, selectedUser, selectedCommand, selectedStatus],
     queryFn: () => DASAPI.getActivity(projectId as string, {
       engine: sourceEngine,
@@ -317,6 +317,19 @@ export default function DASPage() {
           </Button>
         </div>
       </div>
+
+      {/* Error Alert Banner */}
+      {activityError && (
+        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-destructive flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <h4 className="text-sm font-semibold">Telemetry Query Failed</h4>
+            <p className="text-xs text-destructive/90 leading-relaxed font-mono">
+              {(activityError as Error).message}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Activity Table */}
       <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">

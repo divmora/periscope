@@ -59,7 +59,8 @@ export const DASAPI = {
     const url = `/api/projects/${projectId}/das/activity${qs ? `?${qs}` : ""}`;
     const res = await fetch(url);
     if (!res.ok) {
-      throw new Error(`Failed to fetch DAS activity logs: ${res.statusText}`);
+      const errBody = await res.json().catch(() => null);
+      throw new Error(errBody?.error?.message || `Failed to fetch DAS activity logs: ${res.statusText}`);
     }
     return res.json();
   },
@@ -68,7 +69,8 @@ export const DASAPI = {
     const url = `/api/projects/${projectId}/das/stats${sourceIid ? `?source_iid=${sourceIid}` : ""}`;
     const res = await fetch(url);
     if (!res.ok) {
-      throw new Error(`Failed to fetch DAS statistics: ${res.statusText}`);
+      const errBody = await res.json().catch(() => null);
+      throw new Error(errBody?.error?.message || `Failed to fetch DAS statistics: ${res.statusText}`);
     }
     return res.json();
   },

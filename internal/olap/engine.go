@@ -70,20 +70,28 @@ func (e *Engine) ExecuteQuery(ctx context.Context, query string) (*QueryResult, 
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
 
-		if err := cmd.Run(); err == nil {
-			rawJSON := bytes.TrimSpace(stdout.Bytes())
-			if len(rawJSON) > 0 && rawJSON[0] == '[' {
-				var jsonRows []map[string]any
-				if err := json.Unmarshal(rawJSON, &jsonRows); err == nil {
-					res := parseJSONRows(jsonRows)
-					res.DurationMs = float64(time.Since(start).Microseconds()) / 1000.0
-					return res, nil
-				}
+		if err := cmd.Run(); err != nil {
+			errMsg := strings.TrimSpace(stderr.String())
+			if errMsg == "" {
+				errMsg = strings.TrimSpace(stdout.String())
 			}
+			return nil, fmt.Errorf("duckdb execution error: %s: %w", errMsg, err)
 		}
+
+		rawJSON := bytes.TrimSpace(stdout.Bytes())
+		if len(rawJSON) > 0 && rawJSON[0] == '[' {
+			var jsonRows []map[string]any
+			if err := json.Unmarshal(rawJSON, &jsonRows); err != nil {
+				return nil, fmt.Errorf("failed to parse duckdb json output: %w", err)
+			}
+			res := parseJSONRows(jsonRows)
+			res.DurationMs = float64(time.Since(start).Microseconds()) / 1000.0
+			return res, nil
+		}
+		return &QueryResult{Columns: []string{}, Rows: [][]any{}, RowCount: 0, DurationMs: float64(time.Since(start).Microseconds()) / 1000.0}, nil
 	}
 
-	// 2. Fallback in-memory query processor for container environments without native glibc DuckDB
+	// 2. Fallback in-memory query processor for environments without duckdb binary
 	res := executeFallbackQuery(query)
 	res.DurationMs = float64(time.Since(start).Microseconds()) / 1000.0
 	return res, nil

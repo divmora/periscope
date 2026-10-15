@@ -92,7 +92,8 @@ func LoadAWSConfig(ctx context.Context, region string, cfgMap map[string]any) (a
 // ResolveDuckDBS3Credentials retrieves credentials from the resolved AWS config
 // and formats DuckDB SQL commands to configure the S3/httpfs extension.
 func ResolveDuckDBS3Credentials(ctx context.Context, awsCfg aws.Config, endpoint string) string {
-	sql := fmt.Sprintf("SET s3_region='%s';", awsCfg.Region)
+	sql := "INSTALL httpfs; LOAD httpfs; "
+	sql += fmt.Sprintf("SET s3_region='%s';", awsCfg.Region)
 	if endpoint != "" {
 		sql += fmt.Sprintf(" SET s3_endpoint='%s'; SET s3_use_ssl=false; SET s3_url_style='path';", endpoint)
 	}
